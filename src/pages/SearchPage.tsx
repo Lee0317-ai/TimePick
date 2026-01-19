@@ -98,16 +98,6 @@ export default function SearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const saveSearchHistory = async (kw: string) => {
-    if (!user || !kw.trim()) return;
-
-    await supabase
-      .from('search_history')
-      .insert({ user_id: user.id, keyword: kw });
-
-    loadSearchHistory();
-  };
-
   const deleteSearchHistory = async (kw: string) => {
     if (!user) return;
 
