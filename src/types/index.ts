@@ -1,0 +1,51 @@
+export interface Section {
+  id: string;
+  name: string;
+  type: 'webpage' | 'document' | 'image' | 'video';
+  sort_order: number;
+  created_at: string;
+}
+
+export interface Module {
+  id: string;
+  user_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+  module_sections?: { section_id: string }[];
+}
+
+export interface Resource {
+  id: string;
+  user_id: string;
+  section_id: string;
+  module_id: string | null;
+  parent_id: string | null;
+  name: string;
+  url: string | null;
+  content: string | null;
+  file_type: string | null;
+  file_size: number;
+  thumbnail_url: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  sections?: Section;
+  modules?: Module;
+}
+
+export interface Profile {
+  id: string;
+  username: string;
+  nickname: string;
+  created_at: string;
+  storage_used: number;
+  storage_limit: number;
+}
+
+export interface TreeNode {
+  type: 'section' | 'module';
+  data: Section | Module;
+  section?: Section;
+  module?: Module;
+}
