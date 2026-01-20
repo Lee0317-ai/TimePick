@@ -155,6 +155,7 @@ export default function Home() {
               onAddResource={() => setShowResourceDialog(true)}
               refreshTrigger={refreshTrigger}
               isCollector={currentRole === 'collector'}
+              onResourceMove={handleRefresh}
             />
           </ScrollArea>
         </aside>

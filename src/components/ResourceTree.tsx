@@ -28,9 +28,10 @@ interface ResourceTreeProps {
   onAddResource: () => void;
   refreshTrigger: number;
   isCollector?: boolean;
+  onResourceMove?: () => void;
 }
 
-export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResource, refreshTrigger, isCollector = true }: ResourceTreeProps) {
+export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResource, refreshTrigger, isCollector = true, onResourceMove }: ResourceTreeProps) {
   const { user } = useAuth();
   const [sections, setSections] = useState<Section[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -122,6 +123,83 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('bg-accent/50');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-accent/50');
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetModuleId: string, targetSectionId?: string) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-accent/50');
+    
+    const resourceId = e.dataTransfer.getData('resourceId');
+    if (!resourceId) return;
+
+    try {
+      const updateData: any = { module_id: targetModuleId };
+      if (targetSectionId) {
+        updateData.section_id = targetSectionId;
+      }
+
+      const { error } = await supabase
+        .from('resources')
+        .update(updateData)
+        .eq('id', resourceId);
+
+      if (error) throw error;
+      
+      toast.success('资源移动成功');
+      // 触发刷新
+      onNodeSelect({ ...{ type: 'module', data: { id: targetModuleId } as any } }); // Hack to trigger refresh if needed, but better to use a callback
+      // 实际上应该调用父组件的刷新方法，这里我们通过 refreshTrigger 来控制，但这里无法直接触发 refreshTrigger 变化
+      // 我们可以添加一个 onResourceMove 回调
+    } catch (error) {
+      toast.error('移动失败');
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('bg-accent/50');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-accent/50');
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetModuleId: string, targetSectionId?: string) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-accent/50');
+    
+    const resourceId = e.dataTransfer.getData('resourceId');
+    if (!resourceId) return;
+
+    try {
+      const updateData: any = { module_id: targetModuleId };
+      if (targetSectionId) {
+        updateData.section_id = targetSectionId;
+      }
+
+      const { error } = await supabase
+        .from('resources')
+        .update(updateData)
+        .eq('id', resourceId);
+
+      if (error) throw error;
+      
+      toast.success('资源移动成功');
+      onResourceMove?.();
+    } catch (error) {
+      toast.error('移动失败');
+    }
+  };
+
   const renderSectionView = () => {
     return sections.map(section => {
       const isExpanded = expandedNodes.has(section.id);
@@ -202,8 +280,11 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
                   <ContextMenu key={module.id}>
                     <ContextMenuTrigger>
                       <div
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer text-sm"
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer text-sm transition-colors"
                         onClick={() => onNodeSelect({ type: 'module', data: module, section })}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, module.id, section.id)}
                       >
                         <span>{module.name}</span>
                       </div>
@@ -225,8 +306,11 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
                 ) : (
                   <div
                     key={module.id}
-                    className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer text-sm"
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer text-sm transition-colors"
                     onClick={() => onNodeSelect({ type: 'module', data: module, section })}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, module.id, section.id)}
                   >
                     <span>{module.name}</span>
                   </div>
@@ -252,11 +336,14 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
             <ContextMenu>
               <ContextMenuTrigger>
                 <div
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer transition-colors"
                   onClick={() => {
                     toggleNode(module.id);
                     onNodeSelect({ type: 'module', data: module });
                   }}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, module.id)}
                 >
                   <button onClick={(e) => {
                     e.stopPropagation();
@@ -272,6 +359,13 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
+                <ContextMenuItem onClick={() => {
+                  onNodeSelect({ type: 'module', data: module });
+                  onAddResource();
+                }}>
+                  <FilePlus className="h-4 w-4 mr-2" />
+                  新增资料
+                </ContextMenuItem>
                 <ContextMenuItem onClick={() => confirmDeleteModule(module)} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
                   删除模块
@@ -280,11 +374,14 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
             </ContextMenu>
           ) : (
             <div
-              className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
+              className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer transition-colors"
               onClick={() => {
                 toggleNode(module.id);
                 onNodeSelect({ type: 'module', data: module });
               }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, module.id)}
             >
               <button onClick={(e) => {
                 e.stopPropagation();

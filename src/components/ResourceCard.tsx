@@ -73,7 +73,14 @@ export function ResourceCard({ resource, onDelete, highlightKeyword }: ResourceC
 
   return (
     <>
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      <Card 
+        className="overflow-hidden hover:shadow-lg transition-shadow cursor-move"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData('resourceId', resource.id);
+          e.dataTransfer.effectAllowed = 'move';
+        }}
+      >
         <div className="aspect-video bg-muted relative overflow-hidden">
           <img
             src={getThumbnail()}
