@@ -47,6 +47,8 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
       if (selectedNode.section) {
         query = query.eq('section_id', selectedNode.section.id);
       }
+    } else if (selectedNode?.type === 'all') {
+      // 不添加额外过滤条件，查询所有资源
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });
@@ -72,28 +74,39 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
           <BreadcrumbItem>
             <BreadcrumbLink>首页</BreadcrumbLink>
           </BreadcrumbItem>
-          {selectedNode.section && (
+          {selectedNode.type === 'all' ? (
             <>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbLink>{selectedNode.section.name}</BreadcrumbLink>
+                <BreadcrumbLink className="font-semibold">全部资源</BreadcrumbLink>
               </BreadcrumbItem>
             </>
-          )}
-          {selectedNode.module && (
+          ) : (
             <>
+              {selectedNode.section && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbLink>{selectedNode.section.name}</BreadcrumbLink>
+                  </BreadcrumbItem>
+                </>
+              )}
+              {selectedNode.module && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbLink>{selectedNode.module.name}</BreadcrumbLink>
+                  </BreadcrumbItem>
+                </>
+              )}
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbLink>{selectedNode.module.name}</BreadcrumbLink>
+                <BreadcrumbLink className="font-semibold">
+                  {selectedNode.data.name}
+                </BreadcrumbLink>
               </BreadcrumbItem>
             </>
           )}
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink className="font-semibold">
-              {selectedNode.data.name}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
     );

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ChevronRight, ChevronDown, Globe, FileText, Image, Video, FolderPlus, FilePlus, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Globe, FileText, Image, Video, FolderPlus, FilePlus, Trash2, Layers } from 'lucide-react';
 import { Section, Module, TreeNode } from '@/types';
 import {
   ContextMenu,
@@ -381,6 +381,13 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
   return (
     <>
       <div className="p-2 space-y-1">
+        <div
+          className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer mb-2"
+          onClick={() => onNodeSelect({ type: 'all', data: { id: 'all', name: '全部资源' } as any })}
+        >
+          <Layers className="h-4 w-4" />
+          <span className="font-medium">全部资源</span>
+        </div>
         {viewMode === 'section' ? renderSectionView() : renderModuleView()}
       </div>
 

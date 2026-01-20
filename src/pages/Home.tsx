@@ -6,17 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, User, LayoutGrid, LayoutList } from 'lucide-react';
+import { Plus, Search, User, LayoutGrid, LayoutList, Menu } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceTree } from '@/components/ResourceTree';
 import { ResourceList } from '@/components/ResourceList';
 import { ModuleDialog } from '@/components/ModuleDialog';
 import { ResourceDialog } from '@/components/ResourceDialog';
 import { TreeNode } from '@/types';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<'collector' | 'searcher'>('collector');
   const [viewMode, setViewMode] = useState<'section' | 'module'>('section');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -81,6 +85,9 @@ export default function Home() {
 
   const handleNodeSelect = (node: TreeNode) => {
     setSelectedNode(node);
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const handleRefresh = () => {
@@ -93,6 +100,48 @@ export default function Home() {
       <header className="border-b bg-card">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4">
+            {isMobile && (
+              <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="p-0 w-64">
+                  <div className="h-full flex flex-col bg-card">
+                    <div className="p-4 border-b flex items-center justify-between">
+                      <div className="flex gap-2">
+                        <Button
+                          variant={viewMode === 'section' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setViewMode('section')}
+                        >
+                          <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant={viewMode === 'module' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setViewMode('module')}
+                        >
+                          <LayoutList className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <ScrollArea className="flex-1">
+                      <ResourceTree
+                        viewMode={viewMode}
+                        onNodeSelect={handleNodeSelect}
+                        onAddModule={() => setShowModuleDialog(true)}
+                        onAddResource={() => setShowResourceDialog(true)}
+                        refreshTrigger={refreshTrigger}
+                        isCollector={currentRole === 'collector'}
+                        onResourceMove={handleRefresh}
+                      />
+                    </ScrollArea>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
             <h1 className="text-2xl font-bold">拾光</h1>
             <Tabs value={currentRole} onValueChange={handleRoleChange}>
               <TabsList>
@@ -127,38 +176,40 @@ export default function Home() {
 
       {/* 主内容区 */}
       <div className="flex-1 flex overflow-hidden">
-        {/* 左侧树形菜单 */}
-        <aside className="w-64 border-r bg-card">
-          <div className="p-4 border-b flex items-center justify-between">
-            <div className="flex gap-2">
-              <Button
-                variant={viewMode === 'section' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('section')}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'module' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('module')}
-              >
-                <LayoutList className="h-4 w-4" />
-              </Button>
+        {/* 左侧树形菜单 - 桌面端 */}
+        {!isMobile && (
+          <aside className="w-64 border-r bg-card">
+            <div className="p-4 border-b flex items-center justify-between">
+              <div className="flex gap-2">
+                <Button
+                  variant={viewMode === 'section' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('section')}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'module' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('module')}
+                >
+                  <LayoutList className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-          <ScrollArea className="h-[calc(100vh-200px)]">
-            <ResourceTree
-              viewMode={viewMode}
-              onNodeSelect={handleNodeSelect}
-              onAddModule={() => setShowModuleDialog(true)}
-              onAddResource={() => setShowResourceDialog(true)}
-              refreshTrigger={refreshTrigger}
-              isCollector={currentRole === 'collector'}
-              onResourceMove={handleRefresh}
-            />
-          </ScrollArea>
-        </aside>
+            <ScrollArea className="h-[calc(100vh-200px)]">
+              <ResourceTree
+                viewMode={viewMode}
+                onNodeSelect={handleNodeSelect}
+                onAddModule={() => setShowModuleDialog(true)}
+                onAddResource={() => setShowResourceDialog(true)}
+                refreshTrigger={refreshTrigger}
+                isCollector={currentRole === 'collector'}
+                onResourceMove={handleRefresh}
+              />
+            </ScrollArea>
+          </aside>
+        )}
 
         {/* 中间资源列表 */}
         <main className="flex-1 overflow-hidden">
