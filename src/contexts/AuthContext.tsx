@@ -38,13 +38,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkUsernameExists = async (username: string): Promise<boolean> => {
-    const { data, error } = await supabase
+    // 使用 RPC 函数检查用户名是否存在（绕过 RLS）
+    const { data, error } = await supabase.rpc('check_username_exists', {
+      username_input: username
+    });
+
+    if (!error && data !== null) {
+      return data;
+    }
+
+    // 降级方案（仅在已登录或 RLS 允许时有效）
+    const { data: profile } = await supabase
       .from('profiles')
       .select('username')
       .eq('username', username)
       .maybeSingle();
     
-    return !!data && !error;
+    return !!profile;
   };
 
   const signUp = async (username: string, password: string, nickname?: string) => {

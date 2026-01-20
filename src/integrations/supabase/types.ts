@@ -242,7 +242,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_username_exists: {
+        Args: { username_input: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

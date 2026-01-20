@@ -1,0 +1,15 @@
+-- 创建一个安全函数来检查用户名是否存在，绕过 RLS
+CREATE OR REPLACE FUNCTION check_username_exists(username_input TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM profiles
+    WHERE username = username_input
+  );
+END;
+$$;
