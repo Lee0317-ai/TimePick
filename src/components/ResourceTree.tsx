@@ -141,47 +141,7 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
     if (!resourceId) return;
 
     try {
-      const updateData: any = { module_id: targetModuleId };
-      if (targetSectionId) {
-        updateData.section_id = targetSectionId;
-      }
-
-      const { error } = await supabase
-        .from('resources')
-        .update(updateData)
-        .eq('id', resourceId);
-
-      if (error) throw error;
-      
-      toast.success('资源移动成功');
-      // 触发刷新
-      onNodeSelect({ ...{ type: 'module', data: { id: targetModuleId } as any } }); // Hack to trigger refresh if needed, but better to use a callback
-      // 实际上应该调用父组件的刷新方法，这里我们通过 refreshTrigger 来控制，但这里无法直接触发 refreshTrigger 变化
-      // 我们可以添加一个 onResourceMove 回调
-    } catch (error) {
-      toast.error('移动失败');
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.currentTarget.classList.add('bg-accent/50');
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove('bg-accent/50');
-  };
-
-  const handleDrop = async (e: React.DragEvent, targetModuleId: string, targetSectionId?: string) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove('bg-accent/50');
-    
-    const resourceId = e.dataTransfer.getData('resourceId');
-    if (!resourceId) return;
-
-    try {
-      const updateData: any = { module_id: targetModuleId };
+      const updateData: { module_id: string; section_id?: string } = { module_id: targetModuleId };
       if (targetSectionId) {
         updateData.section_id = targetSectionId;
       }
@@ -199,6 +159,8 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
       toast.error('移动失败');
     }
   };
+
+
 
   const renderSectionView = () => {
     return sections.map(section => {
