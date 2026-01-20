@@ -107,17 +107,30 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      const newFiles = Array.from(e.target.files);
+      
+      // 检查文件大小 (50MB)
+      const validFiles = newFiles.filter(file => {
+        if (file.size > 50 * 1024 * 1024) {
+          toast.error(`文件 ${file.name} 超过 50MB 限制`);
+          return false;
+        }
+        return true;
+      });
+
+      if (validFiles.length === 0) return;
+
+      setFiles(validFiles);
       
       // 自动提取文件名
-      if (!resourceName && e.target.files.length > 0) {
-        const fileName = e.target.files[0].name;
+      if (!resourceName && validFiles.length > 0) {
+        const fileName = validFiles[0].name;
         setResourceName(fileName.substring(0, fileName.lastIndexOf('.')) || fileName);
       }
 
       // 自动判断板块类型
-      if (!selectedSection && e.target.files.length > 0) {
-        const file = e.target.files[0];
+      if (!selectedSection && validFiles.length > 0) {
+        const file = validFiles[0];
         const fileType = file.type;
         
         let sectionType = '';
@@ -147,35 +160,37 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
     const urls: string[] = [];
 
     for (const file of files) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('resources')
-        .upload(fileName, file, {
-          upsert: true,
-        });
+        const { error: uploadError } = await supabase.storage
+          .from('resources')
+          .upload(fileName, file, {
+            upsert: true,
+          });
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        toast.error(`文件 ${file.name} 上传失败: ${uploadError.message}`);
-        continue;
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          toast.error(`文件 ${file.name} 上传失败: ${uploadError.message}`);
+          continue;
+        }
+
+        const { data } = supabase.storage
+          .from('resources')
+          .getPublicUrl(fileName);
+
+        // 确保 URL 包含 public 路径
+        let publicUrl = data.publicUrl;
+        if (publicUrl.includes('/storage/v1/object/') && !publicUrl.includes('/storage/v1/object/public/')) {
+          publicUrl = publicUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
+        }
+
+        urls.push(publicUrl);
+      } catch (err) {
+        console.error('Unexpected upload error:', err);
+        toast.error(`文件 ${file.name} 上传发生意外错误`);
       }
-
-      const { data } = supabase.storage
-        .from('resources')
-        .getPublicUrl(fileName);
-
-      // 确保 URL 包含 public 路径
-      let publicUrl = data.publicUrl;
-      // 某些情况下 getPublicUrl 可能返回不带 public 的路径，这里做一个防御性处理
-      // 标准路径应该是 /storage/v1/object/public/bucket/file
-      // 如果返回的是 /storage/v1/object/bucket/file，则手动插入 public
-      if (publicUrl.includes('/storage/v1/object/') && !publicUrl.includes('/storage/v1/object/public/')) {
-        publicUrl = publicUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
-      }
-
-      urls.push(publicUrl);
     }
 
     return urls;
