@@ -156,11 +156,17 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                <ContextMenuItem onClick={onAddModule}>
+                <ContextMenuItem onClick={() => {
+                  onNodeSelect({ type: 'section', data: section });
+                  onAddModule();
+                }}>
                   <FolderPlus className="h-4 w-4 mr-2" />
                   新增模块
                 </ContextMenuItem>
-                <ContextMenuItem onClick={onAddResource}>
+                <ContextMenuItem onClick={() => {
+                  onNodeSelect({ type: 'section', data: section });
+                  onAddResource();
+                }}>
                   <FilePlus className="h-4 w-4 mr-2" />
                   新增资料
                 </ContextMenuItem>
@@ -203,6 +209,13 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
                       </div>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
+                      <ContextMenuItem onClick={() => {
+                        onNodeSelect({ type: 'module', data: module, section });
+                        onAddResource();
+                      }}>
+                        <FilePlus className="h-4 w-4 mr-2" />
+                        新增资料
+                      </ContextMenuItem>
                       <ContextMenuItem onClick={() => confirmDeleteModule(module)} className="text-destructive">
                         <Trash2 className="h-4 w-4 mr-2" />
                         删除模块

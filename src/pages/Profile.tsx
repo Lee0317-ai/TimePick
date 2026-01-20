@@ -12,6 +12,17 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Profile as ProfileType } from '@/types';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 export default function Profile() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -110,15 +121,16 @@ export default function Profile() {
     }
   };
 
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [showClearCacheDialog, setShowClearCacheDialog] = useState(false);
+
   const handleSignOut = async () => {
-    if (!confirm('确定要退出登录吗？')) return;
     await signOut();
     toast.success('已退出登录');
     navigate('/login');
   };
 
   const handleClearCache = () => {
-    if (!confirm('确定要清除本地缓存吗？')) return;
     localStorage.clear();
     toast.success('缓存已清除');
     navigate('/login');
@@ -202,14 +214,14 @@ export default function Profile() {
             <Button
               className="w-full"
               variant="outline"
-              onClick={handleClearCache}
+              onClick={() => setShowClearCacheDialog(true)}
             >
               清除本地缓存
             </Button>
             <Button
               className="w-full"
               variant="destructive"
-              onClick={handleSignOut}
+              onClick={() => setShowSignOutDialog(true)}
             >
               退出登录
             </Button>
@@ -264,6 +276,41 @@ export default function Profile() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* 退出登录确认对话框 */}
+      <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认退出登录</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要退出登录吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSignOut} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              确认退出
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 清除缓存确认对话框 */}
+      <AlertDialog open={showClearCacheDialog} onOpenChange={setShowClearCacheDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认清除缓存</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要清除本地缓存吗？这将清除所有本地存储的数据并重新登录。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearCache} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              确认清除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

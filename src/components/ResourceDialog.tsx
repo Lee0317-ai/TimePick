@@ -16,9 +16,11 @@ interface ResourceDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   editResource?: Resource;
+  initialSectionId?: string;
+  initialModuleId?: string;
 }
 
-export function ResourceDialog({ open, onOpenChange, onSuccess, editResource }: ResourceDialogProps) {
+export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, initialSectionId, initialModuleId }: ResourceDialogProps) {
   const { user } = useAuth();
   const [sections, setSections] = useState<Section[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -62,11 +64,14 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource }: 
         setUrl(editResource.url || '');
         setContent(editResource.content || '');
         setNotes(editResource.notes || '');
+      } else {
+        if (initialSectionId) setSelectedSection(initialSectionId);
+        if (initialModuleId) setSelectedModule(initialModuleId);
       }
     } else {
       resetForm();
     }
-  }, [open, editResource, loadModules]);
+  }, [open, editResource, loadModules, initialSectionId, initialModuleId]);
 
   useEffect(() => {
     if (selectedSection) {

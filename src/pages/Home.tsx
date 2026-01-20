@@ -58,7 +58,7 @@ export default function Home() {
 
     const { error } = await supabase
       .from('user_roles')
-      .upsert({ user_id: user.id, role });
+      .upsert({ user_id: user.id, role }, { onConflict: 'user_id' });
 
     if (error) {
       toast.error('切换角色失败');
@@ -190,6 +190,8 @@ export default function Home() {
         open={showResourceDialog}
         onOpenChange={setShowResourceDialog}
         onSuccess={handleRefresh}
+        initialSectionId={selectedNode?.type === 'section' ? selectedNode.data.id : selectedNode?.section?.id}
+        initialModuleId={selectedNode?.type === 'module' ? selectedNode.data.id : undefined}
       />
     </div>
   );
