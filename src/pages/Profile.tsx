@@ -60,6 +60,7 @@ export default function Profile() {
   }, [user]);
 
   useEffect(() => {
+    document.title = '个人中心 - 拾光';
     loadProfile();
     loadResourceStats();
   }, [user, loadProfile, loadResourceStats]);

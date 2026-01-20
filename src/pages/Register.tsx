@@ -21,6 +21,7 @@ export default function Register() {
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
 
   useEffect(() => {
+    document.title = '注册 - 拾光';
     // 如果已登录，跳转到首页
     if (user) {
       navigate('/home');

@@ -17,6 +17,7 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    document.title = '登录 - 拾光';
     // 如果已登录，跳转到首页
     if (user) {
       navigate('/home');

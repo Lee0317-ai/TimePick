@@ -86,6 +86,7 @@ export default function SearchPage() {
   }, [user, saveSearchHistory]);
 
   useEffect(() => {
+    document.title = '搜索 - 拾光';
     loadSearchHistory();
   }, [loadSearchHistory]);
 

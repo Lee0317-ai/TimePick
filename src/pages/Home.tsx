@@ -30,6 +30,7 @@ export default function Home() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
+    document.title = '首页 - 拾光';
     // 检查是否已选择角色
     const checkRole = async () => {
       if (!user) return;
