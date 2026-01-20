@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { ChevronRight, ChevronDown, Globe, FileText, Image, Video, FolderPlus, FilePlus } from 'lucide-react';
+import { ChevronRight, ChevronDown, Globe, FileText, Image, Video, FolderPlus, FilePlus, Trash2 } from 'lucide-react';
 import { Section, Module, TreeNode } from '@/types';
 import {
   ContextMenu,
@@ -9,6 +9,17 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface ResourceTreeProps {
   viewMode: 'section' | 'module';
@@ -24,6 +35,8 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
   const [sections, setSections] = useState<Section[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const loadModules = useCallback(async () => {
     if (!user) return;
@@ -41,6 +54,30 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
       setModules(data as Module[]);
     }
   }, [user]);
+
+  const handleDeleteModule = async () => {
+    if (!moduleToDelete) return;
+
+    const { error } = await supabase
+      .from('modules')
+      .delete()
+      .eq('id', moduleToDelete.id);
+
+    if (error) {
+      toast.error('删除模块失败');
+    } else {
+      toast.success('模块已删除');
+      loadModules();
+    }
+
+    setShowDeleteDialog(false);
+    setModuleToDelete(null);
+  };
+
+  const confirmDeleteModule = (module: Module) => {
+    setModuleToDelete(module);
+    setShowDeleteDialog(true);
+  };
 
   useEffect(() => {
     loadSections();
@@ -155,13 +192,32 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
           {isExpanded && sectionModules.length > 0 && (
             <div className="ml-6 mt-1 space-y-1">
               {sectionModules.map(module => (
-                <div
-                  key={module.id}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer text-sm"
-                  onClick={() => onNodeSelect({ type: 'module', data: module, section })}
-                >
-                  <span>{module.name}</span>
-                </div>
+                isCollector ? (
+                  <ContextMenu key={module.id}>
+                    <ContextMenuTrigger>
+                      <div
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer text-sm"
+                        onClick={() => onNodeSelect({ type: 'module', data: module, section })}
+                      >
+                        <span>{module.name}</span>
+                      </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem onClick={() => confirmDeleteModule(module)} className="text-destructive">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        删除模块
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ) : (
+                  <div
+                    key={module.id}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer text-sm"
+                    onClick={() => onNodeSelect({ type: 'module', data: module, section })}
+                  >
+                    <span>{module.name}</span>
+                  </div>
+                )
               ))}
             </div>
           )}
@@ -179,25 +235,57 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
 
       return (
         <div key={module.id}>
-          <div
-            className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
-            onClick={() => {
-              toggleNode(module.id);
-              onNodeSelect({ type: 'module', data: module });
-            }}
-          >
-            <button onClick={(e) => {
-              e.stopPropagation();
-              toggleNode(module.id);
-            }}>
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </button>
-            <span className="flex-1">{module.name}</span>
-          </div>
+          {isCollector ? (
+            <ContextMenu>
+              <ContextMenuTrigger>
+                <div
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
+                  onClick={() => {
+                    toggleNode(module.id);
+                    onNodeSelect({ type: 'module', data: module });
+                  }}
+                >
+                  <button onClick={(e) => {
+                    e.stopPropagation();
+                    toggleNode(module.id);
+                  }}>
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </button>
+                  <span className="flex-1">{module.name}</span>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => confirmDeleteModule(module)} className="text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  删除模块
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          ) : (
+            <div
+              className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
+              onClick={() => {
+                toggleNode(module.id);
+                onNodeSelect({ type: 'module', data: module });
+              }}
+            >
+              <button onClick={(e) => {
+                e.stopPropagation();
+                toggleNode(module.id);
+              }}>
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+              <span className="flex-1">{module.name}</span>
+            </div>
+          )}
 
           {isExpanded && moduleSections.length > 0 && (
             <div className="ml-6 mt-1 space-y-1">
@@ -219,8 +307,29 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
   };
 
   return (
-    <div className="p-2 space-y-1">
-      {viewMode === 'section' ? renderSectionView() : renderModuleView()}
-    </div>
+    <>
+      <div className="p-2 space-y-1">
+        {viewMode === 'section' ? renderSectionView() : renderModuleView()}
+      </div>
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除模块</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除模块 "{moduleToDelete?.name}" 吗？此操作无法撤销。
+              该模块下的资源将不再关联到此模块。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteModule} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
