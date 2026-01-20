@@ -152,10 +152,13 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
 
       const { error: uploadError } = await supabase.storage
         .from('resources')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          upsert: true,
+        });
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
+        toast.error(`文件 ${file.name} 上传失败: ${uploadError.message}`);
         continue;
       }
 
@@ -163,7 +166,16 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         .from('resources')
         .getPublicUrl(fileName);
 
-      urls.push(data.publicUrl);
+      // 确保 URL 包含 public 路径
+      let publicUrl = data.publicUrl;
+      // 某些情况下 getPublicUrl 可能返回不带 public 的路径，这里做一个防御性处理
+      // 标准路径应该是 /storage/v1/object/public/bucket/file
+      // 如果返回的是 /storage/v1/object/bucket/file，则手动插入 public
+      if (publicUrl.includes('/storage/v1/object/') && !publicUrl.includes('/storage/v1/object/public/')) {
+        publicUrl = publicUrl.replace('/storage/v1/object/', '/storage/v1/object/public/');
+      }
+
+      urls.push(publicUrl);
     }
 
     return urls;
