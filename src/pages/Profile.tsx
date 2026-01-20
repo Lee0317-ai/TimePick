@@ -113,6 +113,8 @@ export default function Profile() {
   const handleSignOut = async () => {
     if (!confirm('确定要退出登录吗？')) return;
     await signOut();
+    toast.success('已退出登录');
+    navigate('/login');
   };
 
   const handleClearCache = () => {
