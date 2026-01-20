@@ -154,6 +154,7 @@ export default function Home() {
               onAddModule={() => setShowModuleDialog(true)}
               onAddResource={() => setShowResourceDialog(true)}
               refreshTrigger={refreshTrigger}
+              isCollector={currentRole === 'collector'}
             />
           </ScrollArea>
         </aside>

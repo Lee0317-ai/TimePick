@@ -25,7 +25,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource }: 
   const [filteredModules, setFilteredModules] = useState<Module[]>([]);
   
   const [selectedSection, setSelectedSection] = useState('');
-  const [selectedModule, setSelectedModule] = useState('');
+  const [selectedModule, setSelectedModule] = useState('none');
   const [resourceName, setResourceName] = useState('');
   const [url, setUrl] = useState('');
   const [content, setContent] = useState('');
@@ -57,7 +57,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource }: 
       
       if (editResource) {
         setSelectedSection(editResource.section_id);
-        setSelectedModule(editResource.module_id || '');
+        setSelectedModule(editResource.module_id || 'none');
         setResourceName(editResource.name);
         setUrl(editResource.url || '');
         setContent(editResource.content || '');
@@ -81,7 +81,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource }: 
 
   const resetForm = () => {
     setSelectedSection('');
-    setSelectedModule('');
+    setSelectedModule('none');
     setResourceName('');
     setUrl('');
     setContent('');
@@ -205,7 +205,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource }: 
       const resourceData = {
         user_id: user.id,
         section_id: finalSectionId,
-        module_id: selectedModule || null,
+        module_id: selectedModule && selectedModule !== 'none' ? selectedModule : null,
         name: resourceName.trim(),
         url: finalUrl,
         content,
@@ -273,7 +273,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource }: 
                 <SelectValue placeholder="选择模块" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">无</SelectItem>
+                <SelectItem value="none">无</SelectItem>
                 {filteredModules.map(module => (
                   <SelectItem key={module.id} value={module.id}>
                     {module.name}

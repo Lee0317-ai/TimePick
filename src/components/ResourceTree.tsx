@@ -16,9 +16,10 @@ interface ResourceTreeProps {
   onAddModule: () => void;
   onAddResource: () => void;
   refreshTrigger: number;
+  isCollector?: boolean;
 }
 
-export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResource, refreshTrigger }: ResourceTreeProps) {
+export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResource, refreshTrigger, isCollector = true }: ResourceTreeProps) {
   const { user } = useAuth();
   const [sections, setSections] = useState<Section[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -93,40 +94,63 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
 
       return (
         <div key={section.id}>
-          <ContextMenu>
-            <ContextMenuTrigger>
-              <div
-                className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
-                onClick={() => {
-                  toggleNode(section.id);
-                  onNodeSelect({ type: 'section', data: section });
-                }}
-              >
-                <button onClick={(e) => {
-                  e.stopPropagation();
-                  toggleNode(section.id);
-                }}>
-                  {isExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </button>
-                {getSectionIcon(section.type)}
-                <span className="flex-1">{section.name}</span>
-              </div>
-            </ContextMenuTrigger>
-            <ContextMenuContent>
-              <ContextMenuItem onClick={onAddModule}>
-                <FolderPlus className="h-4 w-4 mr-2" />
-                新增模块
-              </ContextMenuItem>
-              <ContextMenuItem onClick={onAddResource}>
-                <FilePlus className="h-4 w-4 mr-2" />
-                新增资料
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
+          {isCollector ? (
+            <ContextMenu>
+              <ContextMenuTrigger>
+                <div
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
+                  onClick={() => {
+                    toggleNode(section.id);
+                    onNodeSelect({ type: 'section', data: section });
+                  }}
+                >
+                  <button onClick={(e) => {
+                    e.stopPropagation();
+                    toggleNode(section.id);
+                  }}>
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </button>
+                  {getSectionIcon(section.type)}
+                  <span className="flex-1">{section.name}</span>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={onAddModule}>
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  新增模块
+                </ContextMenuItem>
+                <ContextMenuItem onClick={onAddResource}>
+                  <FilePlus className="h-4 w-4 mr-2" />
+                  新增资料
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          ) : (
+            <div
+              className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer"
+              onClick={() => {
+                toggleNode(section.id);
+                onNodeSelect({ type: 'section', data: section });
+              }}
+            >
+              <button onClick={(e) => {
+                e.stopPropagation();
+                toggleNode(section.id);
+              }}>
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+              {getSectionIcon(section.type)}
+              <span className="flex-1">{section.name}</span>
+            </div>
+          )}
 
           {isExpanded && sectionModules.length > 0 && (
             <div className="ml-6 mt-1 space-y-1">
