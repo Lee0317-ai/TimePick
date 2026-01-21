@@ -14,7 +14,7 @@ import { ModuleDialog } from '@/components/ModuleDialog';
 import { ResourceDialog } from '@/components/ResourceDialog';
 import { TreeNode } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { trackEvent } from '@/lib/analytics';
 
 export default function Home() {
@@ -112,6 +112,8 @@ export default function Home() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-64">
+                  <SheetTitle className="sr-only">导航菜单</SheetTitle>
+                  <SheetDescription className="sr-only">选择板块或模块查看资源</SheetDescription>
                   <div className="h-full flex flex-col bg-card">
                     <div className="p-4 border-b flex items-center justify-between">
                       <div className="flex gap-2">
