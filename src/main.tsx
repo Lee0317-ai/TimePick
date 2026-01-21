@@ -1,10 +1,10 @@
 import { createRoot } from 'react-dom/client';
-import { PostHogProvider } from 'posthog-js/react';
 import posthog from 'posthog-js';
+import { PostHogProvider } from 'posthog-js/react';
 import App from './App.tsx';
 import './index.css';
 
-// 初始化 PostHog
+// 初始化 PostHog（在 React 渲染之前）
 const posthogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
 const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST;
 
@@ -15,10 +15,9 @@ if (posthogKey && posthogHost) {
     capture_pageview: false,
     autocapture: false,
     disable_session_recording: true,
-    loaded: (posthog) => {
-      if (import.meta.env.DEV) {
-        console.log('PostHog initialized successfully');
-      }
+    persistence: 'localStorage',
+    bootstrap: {
+      distinctID: undefined,
     },
   });
 }

@@ -7,30 +7,26 @@ declare global {
   }
 }
 
-// 检查 PostHog 是否已初始化
-const isPostHogReady = (): boolean => {
-  try {
-    return typeof window !== 'undefined' && !!posthog.get_distinct_id();
-  } catch {
-    return false;
-  }
-};
-
 export const trackEvent = (eventName: string, params?: Record<string, unknown>) => {
   // Google Analytics
-  if (typeof window !== 'undefined' && typeof window.gtag !== 'undefined') {
-    window.gtag('event', eventName, params);
+  if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+    try {
+      window.gtag('event', eventName, params);
+    } catch {
+      // 静默处理 GA 错误
+    }
   }
 
-  // PostHog - 确保已初始化后再调用
-  if (isPostHogReady()) {
+  // PostHog
+  if (typeof window !== 'undefined') {
     try {
-      posthog.capture(eventName, params);
-    } catch (e) {
-      // 静默处理 PostHog 错误
-      if (import.meta.env.DEV) {
-        console.debug('PostHog capture error:', e);
+      // 检查 PostHog 是否已初始化
+      const distinctId = posthog.get_distinct_id?.();
+      if (distinctId) {
+        posthog.capture(eventName, params);
       }
+    } catch {
+      // 静默处理 PostHog 错误
     }
   }
 };
