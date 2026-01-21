@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { ResourcePreview } from './ResourcePreview';
 import { ResourceDialog } from './ResourceDialog';
 import { Resource } from '@/types';
+import { trackEvent } from '@/lib/analytics';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,14 +24,16 @@ interface ResourceCardProps {
   resource: Resource;
   onDelete?: () => void;
   highlightKeyword?: string;
+  onView?: () => void;
 }
 
-export function ResourceCard({ resource, onDelete, highlightKeyword }: ResourceCardProps) {
+export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: ResourceCardProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleDelete = async () => {
+    trackEvent('item_delete_confirm', { resourceId: resource.id });
     const { error } = await supabase
       .from('resources')
       .delete()
@@ -116,7 +119,14 @@ export function ResourceCard({ resource, onDelete, highlightKeyword }: ResourceC
             variant="outline"
             size="sm"
             className="flex-1"
-            onClick={() => setShowPreview(true)}
+            onClick={() => {
+              setShowPreview(true);
+              if (onView) {
+                onView();
+              } else {
+                trackEvent('item_view_click', { resourceId: resource.id });
+              }
+            }}
           >
             <Eye className="h-4 w-4 mr-1" />
             查看
@@ -131,7 +141,10 @@ export function ResourceCard({ resource, onDelete, highlightKeyword }: ResourceC
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowDeleteDialog(true)}
+            onClick={() => {
+              setShowDeleteDialog(true);
+              trackEvent('item_delete_click', { resourceId: resource.id });
+            }}
           >
             <Trash2 className="h-4 w-4" />
           </Button>

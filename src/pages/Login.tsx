@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { trackEvent } from '@/lib/analytics';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function Login() {
 
   useEffect(() => {
     document.title = '登录 - 拾光';
+    trackEvent('login_page_expose');
     // 如果已登录，跳转到首页
     if (user) {
       navigate('/home');
@@ -34,6 +36,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    trackEvent('login_btn_click');
     setIsLoading(true);
 
     const { error } = await signIn(username, password);

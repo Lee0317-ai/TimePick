@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { trackEvent } from '@/lib/analytics';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ export default function Register() {
 
   useEffect(() => {
     document.title = '注册 - 拾光';
+    trackEvent('register_page_expose');
     // 如果已登录，跳转到首页
     if (user) {
       navigate('/home');
@@ -76,6 +78,7 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    trackEvent('register_btn_click');
 
     // 最终校验
     if (!validatePassword(password)) {

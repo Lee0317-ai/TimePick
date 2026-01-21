@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { trackEvent } from '@/lib/analytics';
 
 interface ModuleDialogProps {
   open: boolean;
@@ -27,6 +28,8 @@ export function ModuleDialog({ open, onOpenChange, onSuccess }: ModuleDialogProp
       setModuleName('');
       setSyncToAll(true);
       setNameError('');
+    } else {
+      trackEvent('module_add_popup_show');
     }
   }, [open]);
 
@@ -58,6 +61,7 @@ export function ModuleDialog({ open, onOpenChange, onSuccess }: ModuleDialogProp
   };
 
   const handleSubmit = async () => {
+    trackEvent('module_add_confirm');
     if (!user || !moduleName.trim()) {
       toast.error('请输入模块名称');
       return;

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Section, Module, Resource } from '@/types';
+import { trackEvent } from '@/lib/analytics';
 
 interface ResourceDialogProps {
   open: boolean;
@@ -65,6 +66,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         setContent(editResource.content || '');
         setNotes(editResource.notes || '');
       } else {
+        trackEvent('resource_add_expose');
         if (initialSectionId) setSelectedSection(initialSectionId);
         if (initialModuleId) setSelectedModule(initialModuleId);
       }
@@ -199,6 +201,8 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
   const handleSubmit = async () => {
     if (!user) return;
 
+    trackEvent('add_save_click');
+
     if (!resourceName.trim()) {
       toast.error('请输入资源名称');
       return;
@@ -284,7 +288,10 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="section">所属板块 *</Label>
-            <Select value={selectedSection} onValueChange={setSelectedSection}>
+            <Select value={selectedSection} onValueChange={(val) => {
+              setSelectedSection(val);
+              trackEvent('add_plate_select', { sectionId: val });
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="选择板块" />
               </SelectTrigger>
@@ -300,7 +307,10 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
 
           <div className="space-y-2">
             <Label htmlFor="module">所属模块（可选）</Label>
-            <Select value={selectedModule} onValueChange={setSelectedModule} disabled={!selectedSection}>
+            <Select value={selectedModule} onValueChange={(val) => {
+              setSelectedModule(val);
+              trackEvent('add_module_select', { moduleId: val });
+            }} disabled={!selectedSection}>
               <SelectTrigger>
                 <SelectValue placeholder="选择模块" />
               </SelectTrigger>

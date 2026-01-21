@@ -11,6 +11,7 @@ import { ArrowLeft, Search, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceCard } from '@/components/ResourceCard';
 import { Resource } from '@/types';
+import { trackEvent } from '@/lib/analytics';
 
 export default function SearchPage() {
   const navigate = useNavigate();
@@ -53,6 +54,7 @@ export default function SearchPage() {
 
     setLoading(true);
     saveSearchHistory(kw);
+    trackEvent('global_search_input', { keyword: kw });
 
     const { data, error } = await supabase
       .from('resources')
@@ -72,6 +74,9 @@ export default function SearchPage() {
     }
 
     setResults(data as Resource[] || []);
+    if (data && data.length > 0) {
+      trackEvent('search_result_expose', { count: data.length });
+    }
 
     // 按板块分组
     const grouped: Record<string, Resource[]> = {};
@@ -207,6 +212,7 @@ export default function SearchPage() {
                             resource={resource}
                             highlightKeyword={keyword}
                             onDelete={() => performSearch(keyword)}
+                            onView={() => trackEvent('global_search_result_click', { resourceId: resource.id })}
                           />
                         ))}
                       </div>

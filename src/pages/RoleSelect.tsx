@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Search, FolderOpen } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics';
 
 export default function RoleSelect() {
   const navigate = useNavigate();
@@ -13,9 +14,14 @@ export default function RoleSelect() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'collector' | 'searcher' | null>(null);
 
+  useEffect(() => {
+    trackEvent('role_select_expose');
+  }, []);
+
   const handleRoleSelect = async (role: 'collector' | 'searcher') => {
     if (!user) return;
 
+    trackEvent('role_select_click', { role });
     setIsLoading(true);
     setSelectedRole(role);
 

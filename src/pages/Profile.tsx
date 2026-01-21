@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Profile as ProfileType } from '@/types';
+import { trackEvent } from '@/lib/analytics';
 
 import {
   AlertDialog,
@@ -61,6 +62,7 @@ export default function Profile() {
 
   useEffect(() => {
     document.title = '个人中心 - 拾光';
+    trackEvent('profile_page_expose');
     loadProfile();
     loadResourceStats();
   }, [user, loadProfile, loadResourceStats]);
@@ -126,6 +128,7 @@ export default function Profile() {
   const [showClearCacheDialog, setShowClearCacheDialog] = useState(false);
 
   const handleSignOut = async () => {
+    trackEvent('profile_logout_click');
     await signOut();
     toast.success('已退出登录');
     navigate('/login');
@@ -208,7 +211,10 @@ export default function Profile() {
             <Button
               className="w-full"
               variant="outline"
-              onClick={() => setShowPasswordDialog(true)}
+              onClick={() => {
+                setShowPasswordDialog(true);
+                trackEvent('profile_pwd_click');
+              }}
             >
               修改密码
             </Button>

@@ -383,7 +383,7 @@ export function ResourceTree({ viewMode, onNodeSelect, onAddModule, onAddResourc
       <div className="p-2 space-y-1">
         <div
           className="flex items-center gap-2 px-3 py-2 hover:bg-accent rounded-md cursor-pointer mb-2"
-          onClick={() => onNodeSelect({ type: 'all', data: { id: 'all', name: '全部资源' } as any })}
+          onClick={() => onNodeSelect({ type: 'all', data: { id: 'all', name: '全部资源' } })}
         >
           <Layers className="h-4 w-4" />
           <span className="font-medium">全部资源</span>

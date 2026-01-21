@@ -44,8 +44,8 @@ export interface Profile {
 }
 
 export interface TreeNode {
-  type: 'section' | 'module';
-  data: Section | Module;
+  type: 'section' | 'module' | 'all';
+  data: Section | Module | { id: string; name: string };
   section?: Section;
   module?: Module;
 }

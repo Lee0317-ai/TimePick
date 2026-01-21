@@ -15,6 +15,7 @@ import { ResourceDialog } from '@/components/ResourceDialog';
 import { TreeNode } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { trackEvent } from '@/lib/analytics';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ export default function Home() {
 
   useEffect(() => {
     document.title = '首页 - 拾光';
+    trackEvent('home_page_expose');
     // 检查是否已选择角色
     const checkRole = async () => {
       if (!user) return;
@@ -77,6 +79,7 @@ export default function Home() {
   };
 
   const handleSearch = () => {
+    trackEvent('home_search_click');
     if (!searchKeyword.trim()) {
       toast.error('请输入搜索关键词');
       return;
@@ -115,14 +118,20 @@ export default function Home() {
                         <Button
                           variant={viewMode === 'section' ? 'default' : 'outline'}
                           size="sm"
-                          onClick={() => setViewMode('section')}
+                          onClick={() => {
+                            setViewMode('section');
+                            trackEvent('dimension_switch_click', { mode: 'section' });
+                          }}
                         >
                           <LayoutGrid className="h-4 w-4" />
                         </Button>
                         <Button
                           variant={viewMode === 'module' ? 'default' : 'outline'}
                           size="sm"
-                          onClick={() => setViewMode('module')}
+                          onClick={() => {
+                            setViewMode('module');
+                            trackEvent('dimension_switch_click', { mode: 'module' });
+                          }}
                         >
                           <LayoutList className="h-4 w-4" />
                         </Button>
@@ -185,14 +194,20 @@ export default function Home() {
                 <Button
                   variant={viewMode === 'section' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setViewMode('section')}
+                  onClick={() => {
+                    setViewMode('section');
+                    trackEvent('dimension_switch_click', { mode: 'section' });
+                  }}
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
                 <Button
                   variant={viewMode === 'module' ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setViewMode('module')}
+                  onClick={() => {
+                    setViewMode('module');
+                    trackEvent('dimension_switch_click', { mode: 'module' });
+                  }}
                 >
                   <LayoutList className="h-4 w-4" />
                 </Button>
@@ -227,7 +242,10 @@ export default function Home() {
         <Button
           className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg"
           size="icon"
-          onClick={() => setShowResourceDialog(true)}
+          onClick={() => {
+            setShowResourceDialog(true);
+            trackEvent('home_entry_click');
+          }}
         >
           <Plus className="h-6 w-6" />
         </Button>
