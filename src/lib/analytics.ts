@@ -1,3 +1,4 @@
+import posthog from 'posthog-js';
 
 declare global {
   interface Window {
@@ -7,9 +8,16 @@ declare global {
 }
 
 export const trackEvent = (eventName: string, params?: Record<string, unknown>) => {
+  // Google Analytics
   if (typeof window.gtag !== 'undefined') {
     window.gtag('event', eventName, params);
-  } else {
+  }
+
+  // PostHog
+  posthog.capture(eventName, params);
+
+  // Fallback for development
+  if (typeof window.gtag === 'undefined') {
     console.log('Track Event:', eventName, params);
   }
 };
