@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.47.10"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,79 +7,112 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log('Fortune agent function invoked')
+  console.log('=== Fortune Agent Started ===')
   console.log('Method:', req.method)
-  console.log('Headers:', JSON.stringify(Object.fromEntries(req.headers)))
+  console.log('URL:', req.url)
   
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    console.log('Handling OPTIONS request')
+    console.log('Handling CORS preflight')
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // 1. 读取请求体
-    let requestBody
-    try {
-      const text = await req.text()
-      console.log('Request text:', text)
-      requestBody = JSON.parse(text)
-      console.log('Parsed request body:', JSON.stringify(requestBody))
-    } catch (e) {
-      console.error('Failed to parse request body:', e)
-      return new Response(JSON.stringify({ 
-        error: '请求格式错误',
-        details: e.message 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      })
+    // 1. 验证用户身份
+    console.log('Step 1: Verifying user authentication...')
+    
+    const authHeader = req.headers.get('Authorization')
+    console.log('Auth header exists:', !!authHeader)
+    
+    if (!authHeader) {
+      console.log('No authorization header found')
+      return new Response(
+        JSON.stringify({ error: '缺少认证信息' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')
+    
+    console.log('Supabase URL exists:', !!supabaseUrl)
+    console.log('Supabase Key exists:', !!supabaseKey)
+    
+    const supabase = createClient(supabaseUrl!, supabaseKey!, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false }
+    })
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    console.log('User verification result:', {
+      hasUser: !!user,
+      userId: user?.id,
+      error: userError?.message
+    })
+
+    if (userError || !user) {
+      console.log('User verification failed')
+      return new Response(
+        JSON.stringify({ error: '用户认证失败' }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    console.log('User authenticated successfully:', user.id)
+
+    // 2. 读取请求体
+    console.log('Step 2: Reading request body...')
+    const requestBody = await req.json()
+    console.log('Request body:', JSON.stringify(requestBody))
     
     const { message } = requestBody
     
     if (!message) {
       console.log('No message in request')
-      return new Response(JSON.stringify({ 
-        error: '缺少消息内容' 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      })
+      return new Response(
+        JSON.stringify({ error: '缺少消息内容' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    // 2. 检查 API Key
+    // 3. 检查 API Key
+    console.log('Step 3: Checking DashScope API key...')
     const apiKey = Deno.env.get('DASHSCOPE_API_KEY')
-    console.log('API Key check:', apiKey ? `exists (length: ${apiKey.length})` : 'NOT FOUND')
+    console.log('API Key exists:', !!apiKey, 'Length:', apiKey?.length)
     
     if (!apiKey) {
-      console.error('DASHSCOPE_API_KEY environment variable is not set')
-      return new Response(JSON.stringify({ 
-        error: 'API配置错误',
-        details: 'DASHSCOPE_API_KEY 未设置'
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      })
+      console.error('DASHSCOPE_API_KEY not found')
+      return new Response(
+        JSON.stringify({ error: 'AI服务配置错误' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    // 3. 调用阿里云百炼 API
+    // 4. 调用阿里云百炼 API
+    console.log('Step 4: Calling DashScope API...')
     const appId = 'b464cfbaf21a45038b16a320606f0946'
     const apiUrl = `https://dashscope.aliyuncs.com/api/v1/apps/${appId}/completion`
     
-    console.log('Calling DashScope API...')
-    console.log('API URL:', apiUrl)
-    console.log('User message:', message)
-    
     const payload = {
-      input: {
-        prompt: message
-      },
-      parameters: {
-        incremental_output: false
-      }
+      input: { prompt: message },
+      parameters: { incremental_output: false }
     }
-    console.log('API payload:', JSON.stringify(payload))
+    
+    console.log('API URL:', apiUrl)
+    console.log('Payload:', JSON.stringify(payload))
     
     const dashscopeResponse = await fetch(apiUrl, {
       method: 'POST',
@@ -90,58 +124,50 @@ serve(async (req) => {
     })
 
     console.log('DashScope response status:', dashscopeResponse.status)
-    console.log('DashScope response headers:', JSON.stringify(Object.fromEntries(dashscopeResponse.headers)))
 
     const responseText = await dashscopeResponse.text()
     console.log('DashScope response text:', responseText)
 
     if (!dashscopeResponse.ok) {
-      console.error('DashScope API returned error status')
-      return new Response(JSON.stringify({ 
-        error: 'AI服务调用失败',
-        status: dashscopeResponse.status,
-        details: responseText
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      })
+      console.error('DashScope API error')
+      return new Response(
+        JSON.stringify({ 
+          error: 'AI服务调用失败',
+          status: dashscopeResponse.status,
+          details: responseText
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
     }
 
-    let data
-    try {
-      data = JSON.parse(responseText)
-      console.log('Parsed DashScope response:', JSON.stringify(data))
-    } catch (e) {
-      console.error('Failed to parse DashScope response:', e)
-      return new Response(JSON.stringify({ 
-        error: 'AI响应解析失败',
-        details: responseText
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      })
-    }
+    const data = JSON.parse(responseText)
+    console.log('DashScope parsed response:', JSON.stringify(data))
     
-    console.log('Success! Returning data to client')
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
-    })
+    console.log('=== Success! Returning data ===')
+    return new Response(
+      JSON.stringify(data),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
     
   } catch (error) {
     console.error('=== FATAL ERROR ===')
-    console.error('Error name:', error?.name)
-    console.error('Error message:', error?.message)
-    console.error('Error stack:', error?.stack)
+    console.error('Error:', error)
     
-    return new Response(JSON.stringify({ 
-      error: '服务器内部错误',
-      type: error?.name,
-      message: error?.message,
-      stack: error?.stack
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
-    })
+    return new Response(
+      JSON.stringify({ 
+        error: '服务器内部错误',
+        message: error instanceof Error ? error.message : String(error)
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
   }
 })
