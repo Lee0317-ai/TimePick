@@ -12,6 +12,7 @@ import { ResourceTree } from '@/components/ResourceTree';
 import { ResourceList } from '@/components/ResourceList';
 import { ModuleDialog } from '@/components/ModuleDialog';
 import { ResourceDialog } from '@/components/ResourceDialog';
+import { WeatherWidget } from '@/components/WeatherWidget';
 import { TreeNode } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -180,6 +181,11 @@ export default function Home() {
               <User className="h-5 w-5" />
             </Button>
           </div>
+        </div>
+        
+        {/* 天气和时间 */}
+        <div className="px-4 pb-3">
+          <WeatherWidget />
         </div>
         
         {/* 搜索栏 */}
