@@ -21,7 +21,7 @@ export default function Fortune() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: '你好！我是拾光的运势助手。请告诉我您的基本信息，需要姓名，性别，出生地，出生日期，历法d等信息。另外再告知需要问的问题。（如综合运势、事业、财运、感情等），我来为你推算今年的运势。' }
+    { role: 'assistant', content: '你好！我是拾光的运势助手。请告诉我您的基本信息，需要姓名，性别，出生地，出生日期，历法等信息。另外再告知需要问的问题。（如综合运势、事业、财运、感情等），我来为你推算今年的运势。' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
