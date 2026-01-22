@@ -56,17 +56,35 @@ export default function Fortune() {
       });
 
       if (error) {
-        console.error('Function error:', error);
-        throw error;
+        console.error('Function invocation error:', error);
+        throw new Error(error.message || 'Function call failed');
       }
 
-      const assistantMessage = data?.output?.text || data?.message || '抱歉，我现在无法推算，请稍后再试。';
+      console.log('Fortune agent response:', data);
+
+      // 检查返回数据的不同格式
+      let assistantMessage = '';
+      
+      if (data?.output?.text) {
+        assistantMessage = data.output.text;
+      } else if (data?.message) {
+        assistantMessage = data.message;
+      } else if (data?.error) {
+        throw new Error(data.error);
+      } else {
+        console.warn('Unexpected response format:', data);
+        assistantMessage = '抱歉，我现在无法推算，请稍后再试。';
+      }
+
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
     } catch (error) {
       console.error('Fortune error:', error);
-      const errorMessage = error instanceof Error ? error.message : '连接助手失败';
-      setMessages(prev => [...prev, { role: 'assistant', content: `抱歉，${errorMessage}。请稍后再试。` }]);
-      toast.error('请求失败，请稍后重试');
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `抱歉，出现错误：${errorMessage}。请稍后再试或联系管理员。` 
+      }]);
+      toast.error(`请求失败: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
