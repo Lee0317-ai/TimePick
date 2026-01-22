@@ -51,57 +51,45 @@ export default function Fortune() {
     trackEvent('fortune_chat_send');
 
     try {
-      console.log('=== Fortune Request Start ===');
+      console.log('=== Fortune Request (Direct Fetch) ===');
       console.log('User message:', userMessage);
-      console.log('User authenticated:', !!user);
-      console.log('User ID:', user?.id);
       
-      // 获取当前 session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('Session check:', {
-        hasSession: !!session,
-        hasAccessToken: !!session?.access_token,
-        sessionError: sessionError
+      // 获取 session token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('未登录，请先登录');
+      }
+      
+      // 直接使用 fetch 调用，不用 supabase SDK
+      const functionUrl = 'https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/fortune-agent';
+      
+      console.log('Calling URL:', functionUrl);
+      console.log('With token:', session.access_token.substring(0, 20) + '...');
+      
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es'
+        },
+        body: JSON.stringify({ message: userMessage })
       });
       
-      if (!session || !session.access_token) {
-        throw new Error('未登录或登录已过期，请重新登录');
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`请求失败 (${response.status}): ${errorText}`);
       }
       
-      // 不手动传递 Authorization，让 SDK 自动处理
-      const invokeOptions = {
-        body: { message: userMessage }
-      };
-      
-      console.log('Invoke options:', invokeOptions);
-      console.log('Calling supabase.functions.invoke (SDK will auto-add auth)...');
-      
-      const result = await supabase.functions.invoke('fortune-agent', invokeOptions);
-      
-      console.log('=== Fortune Response ===');
-      console.log('Response status:', result.response?.status);
-      console.log('Response data:', result.data);
-      console.log('Response error:', result.error);
+      const data = await response.json();
+      console.log('Response data:', data);
 
-      if (result.error) {
-        console.error('Function invocation error details:', {
-          name: result.error.name,
-          message: result.error.message,
-          status: result.response?.status
-        });
-        
-        // 特殊处理 401 错误
-        if (result.response?.status === 401) {
-          throw new Error('认证失败，请退出后重新登录');
-        }
-        
-        const errorMsg = result.error.message || 'Function call failed';
-        throw new Error(errorMsg);
-      }
-
-      const data = result.data;
-
-      // 检查返回数据的不同格式
+      // 解析响应
       let assistantMessage = '';
       
       if (data?.output?.text) {
@@ -111,26 +99,19 @@ export default function Fortune() {
       } else if (data?.message) {
         assistantMessage = data.message;
       } else if (data?.error) {
-        console.error('API returned error:', data.error, data.details);
-        throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
+        throw new Error(data.error);
       } else {
-        console.warn('Unexpected response format. Full data:', data);
         assistantMessage = JSON.stringify(data, null, 2);
       }
 
-      console.log('Assistant message:', assistantMessage);
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
       
     } catch (error) {
-      console.error('=== Fortune Error ===');
-      console.error('Error object:', error);
-      console.error('Error type:', error?.constructor?.name);
-      console.error('Error message:', error instanceof Error ? error.message : String(error));
-      
+      console.error('Fortune error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `❌ 出现错误：${errorMessage}\n\n如果问题持续，请退出后重新登录。` 
+        content: `❌ 出现错误：${errorMessage}` 
       }]);
       toast.error(`请求失败: ${errorMessage}`);
     } finally {
