@@ -57,6 +57,10 @@ export default function Fortune() {
       // 使用 anon key 作为 Bearer token
       const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es';
       
+      // 增加超时控制（60秒）
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
       const response = await fetch('https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/fortune-agent', {
         method: 'POST',
         headers: {
@@ -64,8 +68,11 @@ export default function Fortune() {
           'Authorization': `Bearer ${anonKey}`,
           'apikey': anonKey
         },
-        body: JSON.stringify({ message: userMessage })
+        body: JSON.stringify({ message: userMessage }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
@@ -101,12 +108,25 @@ export default function Fortune() {
       
     } catch (error) {
       console.error('Fortune error:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      let errorMessage = '';
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = '请求超时，AI 正在思考较复杂的问题，请稍后重试';
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = '网络连接失败，请检查网络后重试';
+        } else {
+          errorMessage = error.message;
+        }
+      } else {
+        errorMessage = String(error);
+      }
+      
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `❌ 出现错误：${errorMessage}` 
+        content: `❌ ${errorMessage}` 
       }]);
-      toast.error(`请求失败: ${errorMessage}`);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
