@@ -277,12 +277,35 @@ export default function Fortune() {
                   <Bot className={`h-5 w-5 text-purple-600 ${msg.isStreaming ? 'animate-pulse' : ''}`} />
                 )}
               </div>
-              <Card className={`p-3 max-w-[80%] shadow-sm ${
+              <Card className={`p-4 max-w-[80%] shadow-sm ${
                 msg.role === 'user' ? 'bg-purple-600 text-white border-none' : 'bg-white'
               }`}>
                 {msg.role === 'assistant' && msg.content ? (
-                  <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <div className="prose prose-sm max-w-none 
+                    prose-headings:font-bold prose-headings:mb-3 prose-headings:mt-4 first:prose-headings:mt-0
+                    prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
+                    prose-p:text-foreground prose-p:leading-relaxed prose-p:my-2
+                    prose-strong:text-purple-600 prose-strong:font-semibold
+                    prose-ul:my-2 prose-ol:my-2 prose-li:text-foreground prose-li:my-1
+                    prose-blockquote:border-l-purple-600 prose-blockquote:bg-purple-50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r
+                    prose-code:text-purple-600 prose-code:bg-purple-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+                    prose-pre:bg-slate-900 prose-pre:text-slate-50 prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto
+                    prose-a:text-purple-600 prose-a:no-underline hover:prose-a:underline
+                    prose-table:border-collapse prose-table:w-full
+                    prose-th:border prose-th:border-slate-200 prose-th:bg-slate-50 prose-th:p-2 prose-th:text-left
+                    prose-td:border prose-td:border-slate-200 prose-td:p-2
+                  ">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h1: ({node, ...props}) => <h1 className="text-foreground" {...props} />,
+                        h2: ({node, ...props}) => <h2 className="text-foreground" {...props} />,
+                        h3: ({node, ...props}) => <h3 className="text-foreground" {...props} />,
+                        h4: ({node, ...props}) => <h4 className="text-foreground" {...props} />,
+                        h5: ({node, ...props}) => <h5 className="text-foreground" {...props} />,
+                        h6: ({node, ...props}) => <h6 className="text-foreground" {...props} />,
+                      }}
+                    >
                       {msg.content}
                     </ReactMarkdown>
                   </div>
