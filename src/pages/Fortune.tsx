@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { ArrowLeft, Send, Sparkles, Loader2, User, Bot } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { trackEvent } from '@/lib/analytics';
+import { toast } from 'sonner';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -15,12 +17,17 @@ interface Message {
 
 export default function Fortune() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: '你好！我是拾光的运势助手。请告诉我你的生辰八字或想咨询的事情，我来为你推算今年的运势。' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    document.title = '算运势 - 拾光';
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -30,6 +37,12 @@ export default function Fortune() {
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
+
+    if (!user) {
+      toast.error('请先登录');
+      navigate('/login');
+      return;
+    }
 
     const userMessage = input.trim();
     setInput('');
@@ -42,13 +55,18 @@ export default function Fortune() {
         body: { message: userMessage }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Function error:', error);
+        throw error;
+      }
 
-      const assistantMessage = data.output?.text || '抱歉，我现在无法推算，请稍后再试。';
+      const assistantMessage = data?.output?.text || data?.message || '抱歉，我现在无法推算，请稍后再试。';
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
     } catch (error) {
       console.error('Fortune error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: '连接助手失败，请检查网络后重试。' }]);
+      const errorMessage = error instanceof Error ? error.message : '连接助手失败';
+      setMessages(prev => [...prev, { role: 'assistant', content: `抱歉，${errorMessage}。请稍后再试。` }]);
+      toast.error('请求失败，请稍后重试');
     } finally {
       setIsLoading(false);
     }
