@@ -36,6 +36,9 @@ export function WeatherWidget() {
     const saved = localStorage.getItem('weatherCity');
     if (saved) {
       setSavedCity(saved);
+    } else {
+      // 如果没有保存的城市，使用默认城市（北京）
+      setSavedCity('北京');
     }
   }, []);
 
@@ -52,15 +55,8 @@ export function WeatherWidget() {
         // 使用保存的城市
         location = savedCity;
       } else {
-        // 使用地理位置
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 10000
-          });
-        });
-
-        const { latitude, longitude } = position.coords;
-        location = `${latitude},${longitude}`;
+        // 默认使用北京
+        location = '北京';
       }
 
       console.log('Fetching weather for:', location);
@@ -90,7 +86,7 @@ export function WeatherWidget() {
           cityDisplayName = area.areaName[0].value;
         }
       } else {
-        cityDisplayName = '当前位置';
+        cityDisplayName = location;
       }
 
       setWeather({
@@ -110,7 +106,7 @@ export function WeatherWidget() {
         setWeather({
           temperature: 20,
           condition: '晴朗',
-          location: '未知位置',
+          location: savedCity || '北京',
           icon: '113'
         });
       }
@@ -147,13 +143,28 @@ export function WeatherWidget() {
       toast.success(`已切换到 ${customCity.trim()}`);
     };
 
-    // 使用当前位置
-    const handleUseLocation = () => {
-      localStorage.removeItem('weatherCity');
-      setSavedCity('');
-      fetchWeather();
-      setDialogOpen(false);
-      toast.success('已切换到当前位置');
+    // 使用当前位置（尝试获取地理位置）
+    const handleUseLocation = async () => {
+      try {
+        // 尝试获取地理位置
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 5000
+          });
+        });
+
+        const { latitude, longitude } = position.coords;
+        const location = `${latitude},${longitude}`;
+        
+        localStorage.removeItem('weatherCity');
+        setSavedCity('');
+        fetchWeather(location);
+        setDialogOpen(false);
+        toast.success('已切换到当前位置');
+      } catch (error) {
+        console.error('Geolocation failed:', error);
+        toast.error('无法获取当前位置，请手动输入城市名称');
+      }
     };
 
     // 天气状况翻译
@@ -278,20 +289,20 @@ export function WeatherWidget() {
                   <DialogHeader>
                     <DialogTitle>设置城市</DialogTitle>
                     <DialogDescription>
-                      输入城市名称（中文或拼音），如：北京、Shanghai
+                      输入城市名称查看天气（支持中文、拼音或英文）
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Input
-                        placeholder="例如：杭州"
+                        placeholder="例如：上海、广州、深圳"
                         value={customCity}
                         onChange={(e) => setCustomCity(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSaveCity()}
                       />
                       {savedCity && (
                         <p className="text-sm text-muted-foreground">
-                          当前城市：{savedCity}
+                          当前：{savedCity}
                         </p>
                       )}
                     </div>
