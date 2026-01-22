@@ -15,7 +15,6 @@ import remarkGfm from 'remark-gfm';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  isStreaming?: boolean;
 }
 
 export default function Fortune() {
@@ -77,12 +76,8 @@ export default function Fortune() {
     setIsLoading(true);
     trackEvent('fortune_chat_send');
 
-    // 添加一个空的助手消息用于流式更新
-    const newMessageIndex = messages.length + 1;
-    setMessages(prev => [...prev, { role: 'assistant', content: '', isStreaming: true }]);
-
     try {
-      console.log('=== Fortune Request (Streaming) ===');
+      console.log('=== Fortune Request ===');
       console.log('User message:', userMessage);
       
       // 使用 anon key 作为 Bearer token
@@ -99,7 +94,6 @@ export default function Fortune() {
       });
       
       console.log('Response status:', response.status);
-      console.log('Content-Type:', response.headers.get('content-type'));
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -107,111 +101,30 @@ export default function Fortune() {
         throw new Error(`请求失败 (${response.status}): ${errorText}`);
       }
 
-      // 检查是否是流式响应
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('text/event-stream')) {
-        console.log('Processing SSE stream...');
-        
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('无法读取响应流');
-        }
-
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let fullText = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) {
-            console.log('Stream complete, final length:', fullText.length);
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true });
-          
-          // 按事件分割（以双换行分隔）
-          const events = buffer.split('\n\n');
-          buffer = events.pop() || ''; // 保留最后不完整的
-          
-          for (const event of events) {
-            if (!event.trim()) continue;
-            
-            // 提取 data: 行
-            const lines = event.split('\n');
-            let dataLine = '';
-            for (const line of lines) {
-              if (line.startsWith('data:')) {
-                dataLine = line.substring(5).trim();
-                break;
-              }
-            }
-            
-            if (!dataLine || dataLine === '[DONE]') continue;
-            
-            try {
-              const data = JSON.parse(dataLine);
-              if (data.output?.text) {
-                fullText = data.output.text;
-                
-                // 实时更新消息
-                setMessages(prev => {
-                  const updated = [...prev];
-                  updated[newMessageIndex] = {
-                    role: 'assistant',
-                    content: fullText,
-                    isStreaming: true
-                  };
-                  return updated;
-                });
-              }
-            } catch (e) {
-              console.warn('Failed to parse:', dataLine.substring(0, 50));
-            }
-          }
-        }
-
-        // 完成流式传输
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[newMessageIndex] = {
-            role: 'assistant',
-            content: fullText || '未收到回复',
-            isStreaming: false
-          };
-          return updated;
-        });
-        
-      } else {
-        // 非流式响应
-        const data = await response.json();
-        
-        if (data?.error) {
-          throw new Error(data.error);
-        }
-
-        let assistantMessage = '';
-        if (data?.output?.text) {
-          assistantMessage = data.output.text;
-        } else if (data?.output?.choices?.[0]?.message?.content) {
-          assistantMessage = data.output.choices[0].message.content;
-        } else if (data?.message) {
-          assistantMessage = data.message;
-        } else {
-          assistantMessage = JSON.stringify(data, null, 2);
-        }
-
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[newMessageIndex] = {
-            role: 'assistant',
-            content: assistantMessage,
-            isStreaming: false
-          };
-          return updated;
-        });
+      // 获取完整响应（非流式）
+      const data = await response.json();
+      console.log('Response data keys:', Object.keys(data));
+      console.log('Has output:', !!data?.output);
+      console.log('Output text length:', data?.output?.text?.length || 0);
+      
+      if (data?.error) {
+        throw new Error(data.error);
       }
+
+      let assistantMessage = '';
+      if (data?.output?.text) {
+        assistantMessage = data.output.text;
+      } else if (data?.output?.choices?.[0]?.message?.content) {
+        assistantMessage = data.output.choices[0].message.content;
+      } else if (data?.message) {
+        assistantMessage = data.message;
+      } else {
+        console.warn('Unexpected response format:', data);
+        assistantMessage = JSON.stringify(data, null, 2);
+      }
+
+      console.log('Assistant message length:', assistantMessage.length);
+      setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
       
     } catch (error) {
       console.error('Fortune error:', error);
@@ -227,15 +140,10 @@ export default function Fortune() {
         errorMessage = String(error);
       }
       
-      setMessages(prev => {
-        const updated = [...prev];
-        updated[newMessageIndex] = {
-          role: 'assistant',
-          content: `❌ ${errorMessage}`,
-          isStreaming: false
-        };
-        return updated;
-      });
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: `❌ ${errorMessage}` 
+      }]);
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -274,7 +182,7 @@ export default function Fortune() {
                 {msg.role === 'user' ? (
                   <User className="h-5 w-5 text-white" />
                 ) : (
-                  <Bot className={`h-5 w-5 text-purple-600 ${msg.isStreaming ? 'animate-pulse' : ''}`} />
+                  <Bot className="h-5 w-5 text-purple-600" />
                 )}
               </div>
               <Card className={`p-4 max-w-[80%] shadow-sm ${

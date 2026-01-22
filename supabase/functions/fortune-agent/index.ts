@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fortune agent called with streaming enabled')
+    console.log('Fortune agent called (non-streaming mode)')
     
     // 读取请求体
     const { message } = await req.json()
@@ -38,9 +38,9 @@ serve(async (req) => {
       )
     }
 
-    console.log('Calling Bailian API with SSE streaming...')
+    console.log('Calling Bailian API (non-streaming)...')
 
-    // 调用阿里云百炼 API（启用流式输出）
+    // 调用阿里云百炼 API（非流式模式）
     const baiLianResponse = await fetch(
       'https://dashscope.aliyuncs.com/api/v1/apps/b464cfbaf21a45038b16a320606f0946/completion',
       {
@@ -48,12 +48,11 @@ serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'X-DashScope-SSE': 'enable',
         },
         body: JSON.stringify({
           input: { prompt: message },
           parameters: { 
-            incremental_output: true // 启用增量输出
+            incremental_output: false // 禁用流式输出
           }
         })
       }
@@ -74,15 +73,17 @@ serve(async (req) => {
       )
     }
 
-    // 直接转发SSE流
-    return new Response(baiLianResponse.body, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+    const data = await baiLianResponse.json()
+    console.log('Bailian API success, has output:', !!data.output)
+    console.log('Output text length:', data.output?.text?.length || 0)
+    
+    return new Response(
+      JSON.stringify(data),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    })
+    )
     
   } catch (error) {
     console.error('Function error:', error.message)
