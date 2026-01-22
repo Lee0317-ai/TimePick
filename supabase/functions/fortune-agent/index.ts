@@ -16,16 +16,20 @@ serve(async (req) => {
     // 验证用户身份
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error('No authorization header')
       return new Response(
         JSON.stringify({ error: '未提供认证信息' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // 创建 Supabase 客户端验证 JWT
+    // 使用正确的环境变量创建 Supabase 客户端
+    const supabaseUrl = 'https://glfymisjfvioyaylzkdj.supabase.co'
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es'
+    
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: { Authorization: authHeader },
@@ -37,9 +41,9 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     
     if (authError || !user) {
-      console.error('Auth error:', authError)
+      console.error('Auth error:', authError?.message || 'No user')
       return new Response(
-        JSON.stringify({ error: '认证失败，请重新登录' }),
+        JSON.stringify({ error: '认证失败: ' + (authError?.message || '用户不存在') }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -56,7 +60,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('Calling Bailian API for user:', user.id, 'message:', message)
+    console.log('Calling Bailian API for user:', user.id)
 
     // 调用阿里云百炼
     const apiKey = Deno.env.get('DASHSCOPE_API_KEY')
@@ -93,7 +97,7 @@ serve(async (req) => {
     }
 
     const data = await baiLianResponse.json()
-    console.log('Bailian API success, returning data')
+    console.log('Bailian API success')
     
     return new Response(
       JSON.stringify(data),
