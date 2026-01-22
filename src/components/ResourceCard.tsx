@@ -165,101 +165,112 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: R
 
   return (
     <>
-      <Card 
-        className="overflow-hidden hover:shadow-lg transition-shadow cursor-move"
-        draggable
-        onDragStart={(e) => {
-          e.dataTransfer.setData('resourceId', resource.id);
-          e.dataTransfer.effectAllowed = 'move';
-        }}
-      >
-        <div className="aspect-video bg-muted relative overflow-hidden">
-          <img
-            src={getThumbnail()}
-            alt={resource.name}
-            className="object-cover w-full h-full"
-          />
-          <Badge className="absolute top-2 right-2">
-            {resource.sections?.name || '未分类'}
-          </Badge>
-        </div>
-        <CardContent className="pt-4">
-          <h3
-            className="font-semibold truncate mb-2"
-            dangerouslySetInnerHTML={{ __html: highlightText(resource.name) }}
-          />
-          {resource.modules?.name && (
-            <Badge variant="outline" className="mb-2">
-              {resource.modules.name}
-            </Badge>
-          )}
-          {resource.notes && (
-            <p
-              className="text-sm text-muted-foreground line-clamp-2"
-              dangerouslySetInnerHTML={{ __html: highlightText(resource.notes) }}
+      <div className="space-y-2">
+        <Card 
+          className="overflow-hidden hover:shadow-lg transition-shadow cursor-move"
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('resourceId', resource.id);
+            e.dataTransfer.effectAllowed = 'move';
+          }}
+        >
+          <div className="aspect-video bg-muted relative overflow-hidden">
+            <img
+              src={getThumbnail()}
+              alt={resource.name}
+              className="object-cover w-full h-full"
             />
-          )}
-          <p className="text-xs text-muted-foreground mt-2">
-            {new Date(resource.created_at).toLocaleDateString('zh-CN')}
-          </p>
-        </CardContent>
-        <CardFooter className="gap-2 pt-0">
-          {resource.url && (
+            <Badge className="absolute top-2 right-2">
+              {resource.sections?.name || '未分类'}
+            </Badge>
+          </div>
+          <CardContent className="pt-4">
+            <h3
+              className="font-semibold truncate mb-2"
+              dangerouslySetInnerHTML={{ __html: highlightText(resource.name) }}
+            />
+            {resource.modules?.name && (
+              <Badge variant="outline" className="mb-2">
+                {resource.modules.name}
+              </Badge>
+            )}
+            {resource.notes && (
+              <p
+                className="text-sm text-muted-foreground line-clamp-2"
+                dangerouslySetInnerHTML={{ __html: highlightText(resource.notes) }}
+              />
+            )}
+            <p className="text-xs text-muted-foreground mt-2">
+              {new Date(resource.created_at).toLocaleDateString('zh-CN')}
+            </p>
+          </CardContent>
+          <CardFooter className="gap-2 pt-0">
+            {resource.url && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAutoRecognize}
+                disabled={isRecognizing}
+                className="flex-1"
+              >
+                {isRecognizing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    识别中
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-1" />
+                    识别
+                  </>
+                )}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
-              onClick={handleAutoRecognize}
-              disabled={isRecognizing}
-              className="flex-1"
+              className={resource.url ? "" : "flex-1"}
+              onClick={() => {
+                setShowPreview(true);
+                if (onView) {
+                  onView();
+                } else {
+                  trackEvent('item_view_click', { resourceId: resource.id });
+                }
+              }}
             >
-              {isRecognizing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  识别中
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-1" />
-                  识别
-                </>
-              )}
+              <Eye className="h-4 w-4 mr-1" />
+              查看
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            className={resource.url ? "" : "flex-1"}
-            onClick={() => {
-              setShowPreview(true);
-              if (onView) {
-                onView();
-              } else {
-                trackEvent('item_view_click', { resourceId: resource.id });
-              }
-            }}
-          >
-            <Eye className="h-4 w-4 mr-1" />
-            查看
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowEdit(true)}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setShowDeleteDialog(true);
-              trackEvent('item_delete_click', { resourceId: resource.id });
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </CardFooter>
-      </Card>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEdit(true)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowDeleteDialog(true);
+                trackEvent('item_delete_click', { resourceId: resource.id });
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* 简介显示在卡片外面 */}
+        {resource.content && (
+          <div className="px-2">
+            <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+              {resource.content}
+            </p>
+          </div>
+        )}
+      </div>
 
       <ResourcePreview
         resource={resource}
