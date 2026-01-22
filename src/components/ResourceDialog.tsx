@@ -132,6 +132,8 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
 
       const data = await response.json();
 
+      console.log('Recognition response:', data);
+
       // 更新表单数据
       if (data.title) {
         setResourceName(data.title);

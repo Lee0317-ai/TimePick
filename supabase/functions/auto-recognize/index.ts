@@ -71,11 +71,25 @@ serve(async (req) => {
     }
 
     const result = await cozeResponse.json()
-    console.log('Coze API success')
+    console.log('Coze API full response:', JSON.stringify(result))
     
-    // 提取数据
+    // 提取数据 - Coze 返回的数据结构是嵌套的
     if (result.data) {
-      const { title, content, img } = result.data
+      console.log('Result data:', JSON.stringify(result.data))
+      
+      // 解析 data 字段（可能是字符串）
+      let parsedData = result.data
+      if (typeof result.data === 'string') {
+        try {
+          parsedData = JSON.parse(result.data)
+        } catch (e) {
+          console.error('Failed to parse data string:', e)
+        }
+      }
+      
+      const { title, content, img } = parsedData
+      
+      console.log('Extracted - title:', title, 'content:', content?.substring(0, 50), 'img:', img)
       
       return new Response(
         JSON.stringify({
@@ -86,6 +100,7 @@ serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     } else {
+      console.error('No data field in response')
       return new Response(
         JSON.stringify({ error: '识别失败，未返回有效数据' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
