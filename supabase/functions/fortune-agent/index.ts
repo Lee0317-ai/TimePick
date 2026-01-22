@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fortune agent called with streaming')
+    console.log('Fortune agent called (non-streaming mode)')
     
     // 读取请求体
     const { message } = await req.json()
@@ -25,7 +25,7 @@ serve(async (req) => {
       )
     }
 
-    console.log('Message received:', message.substring(0, 50))
+    console.log('Message received:', message.substring(0, 100))
 
     // 获取阿里云百炼 API Key
     const apiKey = Deno.env.get('DASHSCOPE_API_KEY')
@@ -38,9 +38,9 @@ serve(async (req) => {
       )
     }
 
-    console.log('Calling Bailian API with streaming...')
+    console.log('Calling Bailian API (non-streaming)...')
 
-    // 调用阿里云百炼 API（启用流式输出）
+    // 调用阿里云百炼 API（非流式模式）
     const baiLianResponse = await fetch(
       'https://dashscope.aliyuncs.com/api/v1/apps/b464cfbaf21a45038b16a320606f0946/completion',
       {
@@ -48,12 +48,11 @@ serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'X-DashScope-SSE': 'enable', // 启用 SSE
         },
         body: JSON.stringify({
           input: { prompt: message },
           parameters: { 
-            incremental_output: true // 启用增量输出
+            incremental_output: false // 禁用流式输出
           }
         })
       }
@@ -74,49 +73,17 @@ serve(async (req) => {
       )
     }
 
-    // 创建流式响应
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = baiLianResponse.body?.getReader()
-        const decoder = new TextDecoder()
-        
-        if (!reader) {
-          controller.close()
-          return
-        }
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            
-            if (done) {
-              console.log('Stream complete')
-              controller.close()
-              break
-            }
-
-            // 解码并转发数据
-            const chunk = decoder.decode(value, { stream: true })
-            console.log('Streaming chunk:', chunk.substring(0, 100))
-            
-            // 直接转发原始 SSE 数据
-            controller.enqueue(new TextEncoder().encode(chunk))
-          }
-        } catch (error) {
-          console.error('Stream error:', error)
-          controller.error(error)
-        }
+    const data = await baiLianResponse.json()
+    console.log('Bailian API success, has output:', !!data.output)
+    console.log('Output text length:', data.output?.text?.length || 0)
+    
+    return new Response(
+      JSON.stringify(data),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
-    })
-
-    return new Response(stream, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      }
-    })
+    )
     
   } catch (error) {
     console.error('Function error:', error.message)

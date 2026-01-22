@@ -75,110 +75,31 @@ export default function Fortune() {
         throw new Error(`请求失败 (${response.status}): ${errorText}`);
       }
 
-      // 检查是否是流式响应
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('text/event-stream')) {
-        console.log('Streaming response detected');
-        
-        // 先结束加载状态，添加助手消息用于流式更新
-        setIsLoading(false);
-        const assistantMessageIndex = messages.length + 1;
-        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-        
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let buffer = ''; // 累积未完成的数据
-        let fullText = '';
-        let currentDataBlock = ''; // 累积当前事件的 data 字段
-
-        if (!reader) {
-          throw new Error('无法读取响应流');
-        }
-
-        while (true) {
-          const { done, value } = await reader.read();
-          
-          if (done) {
-            console.log('Stream complete, final text length:', fullText.length);
-            break;
-          }
-
-          const chunk = decoder.decode(value, { stream: true });
-          buffer += chunk;
-          
-          // 按双换行分割完整的 SSE 事件
-          const events = buffer.split('\n\n');
-          // 保留最后不完整的事件
-          buffer = events.pop() || '';
-          
-          for (const event of events) {
-            const lines = event.split('\n');
-            currentDataBlock = '';
-            
-            for (const line of lines) {
-              if (line.startsWith('data:')) {
-                // 累积 data 字段（可能跨多行）
-                currentDataBlock += line.substring(5).trim();
-              }
-            }
-            
-            if (currentDataBlock) {
-              try {
-                if (currentDataBlock === '[DONE]') {
-                  console.log('Stream finished with [DONE]');
-                  continue;
-                }
-                
-                const data = JSON.parse(currentDataBlock);
-                
-                // 提取文本内容
-                if (data.output?.text) {
-                  fullText = data.output.text;
-                  
-                  // 实时更新消息
-                  setMessages(prev => {
-                    const newMessages = [...prev];
-                    newMessages[assistantMessageIndex] = {
-                      role: 'assistant',
-                      content: fullText
-                    };
-                    return newMessages;
-                  });
-                }
-              } catch (e) {
-                // 忽略解析错误（可能是不完整的 JSON）
-                console.log('Parse error, waiting for more data');
-              }
-            }
-          }
-        }
-
-        if (!fullText) {
-          throw new Error('未收到有效响应');
-        }
-      } else {
-        // 非流式响应，按原方式处理
-        const data = await response.json();
-        console.log('Response data:', data);
-        
-        if (data?.error) {
-          throw new Error(data.error);
-        }
-
-        let assistantMessage = '';
-        if (data?.output?.text) {
-          assistantMessage = data.output.text;
-        } else if (data?.output?.choices?.[0]?.message?.content) {
-          assistantMessage = data.output.choices[0].message.content;
-        } else if (data?.message) {
-          assistantMessage = data.message;
-        } else {
-          assistantMessage = JSON.stringify(data, null, 2);
-        }
-
-        setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
-        setIsLoading(false);
+      // 获取完整响应（非流式）
+      const data = await response.json();
+      console.log('Response data keys:', Object.keys(data));
+      console.log('Has output:', !!data?.output);
+      console.log('Output text length:', data?.output?.text?.length || 0);
+      
+      if (data?.error) {
+        throw new Error(data.error);
       }
+
+      let assistantMessage = '';
+      if (data?.output?.text) {
+        assistantMessage = data.output.text;
+      } else if (data?.output?.choices?.[0]?.message?.content) {
+        assistantMessage = data.output.choices[0].message.content;
+      } else if (data?.message) {
+        assistantMessage = data.message;
+      } else {
+        console.warn('Unexpected response format:', data);
+        assistantMessage = JSON.stringify(data, null, 2);
+      }
+
+      console.log('Assistant message length:', assistantMessage.length);
+      setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
+      setIsLoading(false);
       
     } catch (error) {
       console.error('Fortune error:', error);
