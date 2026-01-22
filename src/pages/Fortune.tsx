@@ -51,38 +51,48 @@ export default function Fortune() {
     trackEvent('fortune_chat_send');
 
     try {
+      console.log('Sending message to fortune agent:', userMessage);
+      
       const { data, error } = await supabase.functions.invoke('fortune-agent', {
         body: { message: userMessage }
       });
 
+      console.log('Response data:', data);
+      console.log('Response error:', error);
+
       if (error) {
-        console.error('Function invocation error:', error);
+        console.error('Function invocation error details:', {
+          message: error.message,
+          context: error.context,
+          status: error.status
+        });
         throw new Error(error.message || 'Function call failed');
       }
-
-      console.log('Fortune agent response:', data);
 
       // 检查返回数据的不同格式
       let assistantMessage = '';
       
       if (data?.output?.text) {
         assistantMessage = data.output.text;
+      } else if (data?.output?.choices?.[0]?.message?.content) {
+        assistantMessage = data.output.choices[0].message.content;
       } else if (data?.message) {
         assistantMessage = data.message;
       } else if (data?.error) {
-        throw new Error(data.error);
+        console.error('API returned error:', data.error, data.details);
+        throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
       } else {
         console.warn('Unexpected response format:', data);
-        assistantMessage = '抱歉，我现在无法推算，请稍后再试。';
+        assistantMessage = '收到了回复，但格式异常。请重试。';
       }
 
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
     } catch (error) {
       console.error('Fortune error:', error);
-      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      const errorMessage = error instanceof Error ? error.message : String(error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `抱歉，出现错误：${errorMessage}。请稍后再试或联系管理员。` 
+        content: `抱歉，出现错误：${errorMessage}。\n\n请检查：\n1. 您是否已登录\n2. 网络连接是否正常\n3. 稍后重试` 
       }]);
       toast.error(`请求失败: ${errorMessage}`);
     } finally {
