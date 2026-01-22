@@ -51,20 +51,30 @@ export default function Fortune() {
     trackEvent('fortune_chat_send');
 
     try {
-      console.log('=== Fortune Request ===');
+      console.log('=== Fortune Request (No Auth) ===');
       console.log('User message:', userMessage);
       
-      // 使用 Supabase SDK 调用（无需手动处理认证）
-      const { data, error: invokeError } = await supabase.functions.invoke('fortune-agent', {
-        body: { message: userMessage }
+      // 直接用 fetch 调用，只发送 apikey，不发送 Authorization
+      const response = await fetch('https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/fortune-agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es'
+        },
+        body: JSON.stringify({ message: userMessage })
       });
       
-      console.log('Response data:', data);
-      console.log('Response error:', invokeError);
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
       
-      if (invokeError) {
-        throw new Error(invokeError.message);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`请求失败 (${response.status}): ${errorText}`);
       }
+      
+      const data = await response.json();
+      console.log('Response data:', data);
       
       if (data?.error) {
         throw new Error(data.error);
