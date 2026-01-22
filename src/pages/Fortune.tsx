@@ -68,18 +68,13 @@ export default function Fortune() {
         throw new Error('未登录或登录已过期，请重新登录');
       }
       
+      // 不手动传递 Authorization，让 SDK 自动处理
       const invokeOptions = {
-        body: { message: userMessage },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
+        body: { message: userMessage }
       };
       
-      console.log('Invoke options (with auth):', {
-        body: invokeOptions.body,
-        hasAuthHeader: !!invokeOptions.headers.Authorization
-      });
-      console.log('Calling supabase.functions.invoke...');
+      console.log('Invoke options:', invokeOptions);
+      console.log('Calling supabase.functions.invoke (SDK will auto-add auth)...');
       
       const result = await supabase.functions.invoke('fortune-agent', invokeOptions);
       
@@ -120,7 +115,7 @@ export default function Fortune() {
         throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
       } else {
         console.warn('Unexpected response format. Full data:', data);
-        assistantMessage = '收到了回复，但格式异常。完整响应：' + JSON.stringify(data);
+        assistantMessage = JSON.stringify(data, null, 2);
       }
 
       console.log('Assistant message:', assistantMessage);
@@ -135,7 +130,7 @@ export default function Fortune() {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `❌ 出现错误：${errorMessage}\n\n可能原因：\n1. 登录已过期，请退出后重新登录\n2. 服务未正确配置\n3. 网络连接问题\n\n请尝试重新登录或联系管理员。` 
+        content: `❌ 出现错误：${errorMessage}\n\n如果问题持续，请退出后重新登录。` 
       }]);
       toast.error(`请求失败: ${errorMessage}`);
     } finally {
