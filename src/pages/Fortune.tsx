@@ -51,23 +51,41 @@ export default function Fortune() {
     trackEvent('fortune_chat_send');
 
     try {
-      console.log('Sending message to fortune agent:', userMessage);
+      console.log('=== Fortune Request Start ===');
+      console.log('User message:', userMessage);
+      console.log('User authenticated:', !!user);
+      console.log('User ID:', user?.id);
       
-      const { data, error } = await supabase.functions.invoke('fortune-agent', {
+      const invokeOptions = {
         body: { message: userMessage }
-      });
+      };
+      
+      console.log('Invoke options:', invokeOptions);
+      console.log('Calling supabase.functions.invoke...');
+      
+      const result = await supabase.functions.invoke('fortune-agent', invokeOptions);
+      
+      console.log('=== Fortune Response ===');
+      console.log('Full result:', result);
+      console.log('Response data:', result.data);
+      console.log('Response error:', result.error);
 
-      console.log('Response data:', data);
-      console.log('Response error:', error);
-
-      if (error) {
+      if (result.error) {
         console.error('Function invocation error details:', {
-          message: error.message,
-          context: error.context,
-          status: error.status
+          name: result.error.name,
+          message: result.error.message,
+          context: result.error.context,
+          details: result.error
         });
-        throw new Error(error.message || 'Function call failed');
+        
+        // 尝试从错误中提取更多信息
+        const errorMsg = result.error.message || 
+                        result.error.context?.message || 
+                        'Function call failed';
+        throw new Error(errorMsg);
       }
+
+      const data = result.data;
 
       // 检查返回数据的不同格式
       let assistantMessage = '';
@@ -82,17 +100,23 @@ export default function Fortune() {
         console.error('API returned error:', data.error, data.details);
         throw new Error(data.error + (data.details ? `: ${data.details}` : ''));
       } else {
-        console.warn('Unexpected response format:', data);
-        assistantMessage = '收到了回复，但格式异常。请重试。';
+        console.warn('Unexpected response format. Full data:', data);
+        assistantMessage = '收到了回复，但格式异常。完整响应：' + JSON.stringify(data);
       }
 
+      console.log('Assistant message:', assistantMessage);
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
+      
     } catch (error) {
-      console.error('Fortune error:', error);
+      console.error('=== Fortune Error ===');
+      console.error('Error object:', error);
+      console.error('Error type:', error?.constructor?.name);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      
       const errorMessage = error instanceof Error ? error.message : String(error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `抱歉，出现错误：${errorMessage}。\n\n请检查：\n1. 您是否已登录\n2. 网络连接是否正常\n3. 稍后重试` 
+        content: `❌ 出现错误：${errorMessage}\n\n可能原因：\n1. 服务未正确配置\n2. 网络连接问题\n3. API调用失败\n\n请联系管理员或稍后重试。` 
       }]);
       toast.error(`请求失败: ${errorMessage}`);
     } finally {
