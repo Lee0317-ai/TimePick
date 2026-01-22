@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Trash2 } from 'lucide-react';
+import { Eye, Edit, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ResourcePreview } from './ResourcePreview';
@@ -31,6 +31,7 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: R
   const [showPreview, setShowPreview] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isRecognizing, setIsRecognizing] = useState(false);
 
   const handleDelete = async () => {
     trackEvent('item_delete_confirm', { resourceId: resource.id });
@@ -46,6 +47,84 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: R
       onDelete?.();
     }
     setShowDeleteDialog(false);
+  };
+
+  // 自动识别
+  const handleAutoRecognize = async () => {
+    if (!resource.url) {
+      toast.error('该资源没有网址信息');
+      return;
+    }
+
+    setIsRecognizing(true);
+    trackEvent('auto_recognize_from_card', { resourceId: resource.id, url: resource.url });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-recognize', {
+        body: { url: resource.url }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // 下载并上传图片
+      let thumbnailUrl = '';
+      if (data.img) {
+        try {
+          const imageResponse = await fetch(data.img);
+          const imageBlob = await imageResponse.blob();
+          
+          const fileName = `recognized_${Date.now()}.jpg`;
+          const filePath = `${resource.user_id}/${fileName}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('resources')
+            .upload(filePath, imageBlob, {
+              contentType: 'image/jpeg',
+              upsert: false
+            });
+
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('resources')
+              .getPublicUrl(filePath);
+            
+            thumbnailUrl = publicUrl;
+          }
+        } catch (imgError) {
+          console.error('Failed to upload image:', imgError);
+        }
+      }
+
+      // 更新资源信息
+      const updateData: { name?: string; content?: string; thumbnail_url?: string } = {};
+      if (data.title) updateData.name = data.title;
+      if (data.content) updateData.content = data.content;
+      if (thumbnailUrl) updateData.thumbnail_url = thumbnailUrl;
+
+      const { error: updateError } = await supabase
+        .from('resources')
+        .update(updateData)
+        .eq('id', resource.id);
+
+      if (updateError) throw updateError;
+
+      toast.success('识别成功！');
+      onDelete?.(); // 触发刷新
+      trackEvent('auto_recognize_from_card_success', { resourceId: resource.id });
+    } catch (error: unknown) {
+      console.error('Auto recognize error:', error);
+      toast.error('识别失败，请重试');
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      trackEvent('auto_recognize_from_card_fail', { resourceId: resource.id, error: errorMessage });
+    } finally {
+      setIsRecognizing(false);
+    }
   };
 
   const getThumbnail = () => {
@@ -115,10 +194,31 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: R
           </p>
         </CardContent>
         <CardFooter className="gap-2 pt-0">
+          {resource.url && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAutoRecognize}
+              disabled={isRecognizing}
+              className="flex-1"
+            >
+              {isRecognizing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  识别中
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  识别
+                </>
+              )}
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
-            className="flex-1"
+            className={resource.url ? "" : "flex-1"}
             onClick={() => {
               setShowPreview(true);
               if (onView) {

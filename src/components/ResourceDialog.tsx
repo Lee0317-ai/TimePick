@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Section, Module, Resource } from '@/types';
 import { trackEvent } from '@/lib/analytics';
@@ -35,6 +35,8 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
   const [notes, setNotes] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [recognizedImageUrl, setRecognizedImageUrl] = useState('');
 
   const loadModules = useCallback(async () => {
     if (!user) return;
@@ -94,6 +96,53 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
     setContent('');
     setNotes('');
     setFiles([]);
+    setRecognizedImageUrl('');
+  };
+
+  // 自动识别网址
+  const handleAutoRecognize = async () => {
+    if (!url || !url.trim()) {
+      toast.error('请先输入网址');
+      return;
+    }
+
+    setIsRecognizing(true);
+    trackEvent('auto_recognize_click', { url });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-recognize', {
+        body: { url: url.trim() }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      // 更新表单数据
+      if (data.title) {
+        setResourceName(data.title);
+      }
+      if (data.content) {
+        setContent(data.content);
+      }
+      if (data.img) {
+        setRecognizedImageUrl(data.img);
+      }
+
+      toast.success('识别成功！');
+      trackEvent('auto_recognize_success', { url });
+    } catch (error: unknown) {
+      console.error('Auto recognize error:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      toast.error('识别失败，请重试');
+      trackEvent('auto_recognize_fail', { url, error: errorMessage });
+    } finally {
+      setIsRecognizing(false);
+    }
   };
 
   const loadSections = async () => {
@@ -219,6 +268,38 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
       // 上传文件
       const uploadedUrls = await uploadFiles();
       
+      // 处理识别的图片
+      let thumbnailUrl = '';
+      if (recognizedImageUrl) {
+        try {
+          // 下载图片
+          const imageResponse = await fetch(recognizedImageUrl);
+          const imageBlob = await imageResponse.blob();
+          
+          // 生成唯一文件名
+          const fileName = `recognized_${Date.now()}.jpg`;
+          const filePath = `${user.id}/${fileName}`;
+          
+          // 上传到 Supabase Storage
+          const { error: uploadError } = await supabase.storage
+            .from('resources')
+            .upload(filePath, imageBlob, {
+              contentType: 'image/jpeg',
+              upsert: false
+            });
+
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('resources')
+              .getPublicUrl(filePath);
+            
+            thumbnailUrl = publicUrl;
+          }
+        } catch (error) {
+          console.error('Failed to upload recognized image:', error);
+        }
+      }
+      
       // 确定最终的 URL
       let finalUrl = url;
       if (uploadedUrls.length > 0) {
@@ -247,6 +328,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         content,
         notes,
         file_size: files.length > 0 ? files[0].size : 0,
+        ...(thumbnailUrl && { thumbnail_url: thumbnailUrl }),
       };
 
       if (editResource) {
@@ -337,12 +419,36 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
 
           <div className="space-y-2">
             <Label htmlFor="url">资源信息（网址或内容）</Label>
-            <Input
-              id="url"
-              placeholder="输入网址或资源链接"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="url"
+                placeholder="输入网址或资源链接"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className="flex-1"
+              />
+              {url && url.trim() && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAutoRecognize}
+                  disabled={isRecognizing}
+                  className="shrink-0"
+                >
+                  {isRecognizing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      识别中...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      自动识别
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
