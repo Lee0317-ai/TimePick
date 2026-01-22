@@ -50,16 +50,16 @@ export default function Fortune() {
     setIsLoading(true);
     trackEvent('fortune_chat_send');
 
+    // 添加一个空的助手消息，用于流式更新
+    const assistantMessageIndex = messages.length + 1;
+    setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
     try {
-      console.log('=== Fortune Request (Anon Key Auth) ===');
+      console.log('=== Fortune Request (Streaming) ===');
       console.log('User message:', userMessage);
       
       // 使用 anon key 作为 Bearer token
       const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es';
-      
-      // 增加超时控制（60秒）
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
       
       const response = await fetch('https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/fortune-agent', {
         method: 'POST',
@@ -68,43 +68,111 @@ export default function Fortune() {
           'Authorization': `Bearer ${anonKey}`,
           'apikey': anonKey
         },
-        body: JSON.stringify({ message: userMessage }),
-        signal: controller.signal
+        body: JSON.stringify({ message: userMessage })
       });
       
-      clearTimeout(timeoutId);
-      
       console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
       
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Error response:', errorText);
         throw new Error(`请求失败 (${response.status}): ${errorText}`);
       }
-      
-      const data = await response.json();
-      console.log('Response data:', data);
-      
-      if (data?.error) {
-        throw new Error(data.error);
-      }
 
-      // 解析响应
-      let assistantMessage = '';
-      
-      if (data?.output?.text) {
-        assistantMessage = data.output.text;
-      } else if (data?.output?.choices?.[0]?.message?.content) {
-        assistantMessage = data.output.choices[0].message.content;
-      } else if (data?.message) {
-        assistantMessage = data.message;
+      // 检查是否是流式响应
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('text/event-stream')) {
+        console.log('Streaming response detected');
+        
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+
+        if (!reader) {
+          throw new Error('无法读取响应流');
+        }
+
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            console.log('Stream complete');
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          console.log('Received chunk:', chunk.substring(0, 100));
+          
+          // 解析 SSE 格式：data: {...}\n\n
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              try {
+                const jsonStr = line.substring(5).trim();
+                if (jsonStr === '[DONE]') {
+                  console.log('Stream finished with [DONE]');
+                  continue;
+                }
+                
+                const data = JSON.parse(jsonStr);
+                
+                // 提取文本内容
+                if (data.output?.text) {
+                  fullText = data.output.text;
+                } else if (data.output?.choices?.[0]?.message?.content) {
+                  fullText = data.output.choices[0].message.content;
+                }
+                
+                // 实时更新消息
+                if (fullText) {
+                  setMessages(prev => {
+                    const newMessages = [...prev];
+                    newMessages[assistantMessageIndex] = {
+                      role: 'assistant',
+                      content: fullText
+                    };
+                    return newMessages;
+                  });
+                }
+              } catch (e) {
+                console.warn('Failed to parse SSE data:', e);
+              }
+            }
+          }
+        }
+
+        if (!fullText) {
+          throw new Error('未收到有效响应');
+        }
       } else {
-        assistantMessage = JSON.stringify(data, null, 2);
-      }
+        // 非流式响应，按原方式处理
+        const data = await response.json();
+        console.log('Response data:', data);
+        
+        if (data?.error) {
+          throw new Error(data.error);
+        }
 
-      console.log('Assistant message:', assistantMessage);
-      setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
+        let assistantMessage = '';
+        if (data?.output?.text) {
+          assistantMessage = data.output.text;
+        } else if (data?.output?.choices?.[0]?.message?.content) {
+          assistantMessage = data.output.choices[0].message.content;
+        } else if (data?.message) {
+          assistantMessage = data.message;
+        } else {
+          assistantMessage = JSON.stringify(data, null, 2);
+        }
+
+        setMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[assistantMessageIndex] = {
+            role: 'assistant',
+            content: assistantMessage
+          };
+          return newMessages;
+        });
+      }
       
     } catch (error) {
       console.error('Fortune error:', error);
@@ -122,10 +190,14 @@ export default function Fortune() {
         errorMessage = String(error);
       }
       
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: `❌ ${errorMessage}` 
-      }]);
+      setMessages(prev => {
+        const newMessages = [...prev];
+        newMessages[assistantMessageIndex] = {
+          role: 'assistant',
+          content: `❌ ${errorMessage}`
+        };
+        return newMessages;
+      });
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

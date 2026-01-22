@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fortune agent called')
+    console.log('Fortune agent called with streaming')
     
     // 读取请求体
     const { message } = await req.json()
@@ -38,73 +38,85 @@ serve(async (req) => {
       )
     }
 
-    console.log('Calling Bailian API...')
+    console.log('Calling Bailian API with streaming...')
 
-    // 创建超时控制器（50秒超时）
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 50000)
-
-    try {
-      // 调用阿里云百炼 API
-      const baiLianResponse = await fetch(
-        'https://dashscope.aliyuncs.com/api/v1/apps/b464cfbaf21a45038b16a320606f0946/completion',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            input: { prompt: message },
-            parameters: { 
-              incremental_output: false 
-            }
-          }),
-          signal: controller.signal
-        }
-      )
-
-      clearTimeout(timeoutId)
-
-      console.log('Bailian API response status:', baiLianResponse.status)
-
-      if (!baiLianResponse.ok) {
-        const errorText = await baiLianResponse.text()
-        console.error('Bailian API error response:', errorText)
-        return new Response(
-          JSON.stringify({ 
-            error: 'AI 服务调用失败', 
-            details: errorText,
-            status: baiLianResponse.status 
-          }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+    // 调用阿里云百炼 API（启用流式输出）
+    const baiLianResponse = await fetch(
+      'https://dashscope.aliyuncs.com/api/v1/apps/b464cfbaf21a45038b16a320606f0946/completion',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'X-DashScope-SSE': 'enable', // 启用 SSE
+        },
+        body: JSON.stringify({
+          input: { prompt: message },
+          parameters: { 
+            incremental_output: true // 启用增量输出
+          }
+        })
       }
+    )
 
-      const data = await baiLianResponse.json()
-      console.log('Bailian API success, response keys:', Object.keys(data))
-      
+    console.log('Bailian API response status:', baiLianResponse.status)
+
+    if (!baiLianResponse.ok) {
+      const errorText = await baiLianResponse.text()
+      console.error('Bailian API error response:', errorText)
       return new Response(
-        JSON.stringify(data),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ 
+          error: 'AI 服务调用失败', 
+          details: errorText,
+          status: baiLianResponse.status 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
-    } catch (fetchError) {
-      clearTimeout(timeoutId)
-      
-      if (fetchError.name === 'AbortError') {
-        console.error('Bailian API timeout after 50s')
-        return new Response(
-          JSON.stringify({ 
-            error: 'AI 响应超时，问题可能较复杂，请简化后重试' 
-          }),
-          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      throw fetchError
     }
+
+    // 创建流式响应
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = baiLianResponse.body?.getReader()
+        const decoder = new TextDecoder()
+        
+        if (!reader) {
+          controller.close()
+          return
+        }
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            
+            if (done) {
+              console.log('Stream complete')
+              controller.close()
+              break
+            }
+
+            // 解码并转发数据
+            const chunk = decoder.decode(value, { stream: true })
+            console.log('Streaming chunk:', chunk.substring(0, 100))
+            
+            // 直接转发原始 SSE 数据
+            controller.enqueue(new TextEncoder().encode(chunk))
+          }
+        } catch (error) {
+          console.error('Stream error:', error)
+          controller.error(error)
+        }
+      }
+    })
+
+    return new Response(stream, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      }
+    })
     
   } catch (error) {
     console.error('Function error:', error.message)
