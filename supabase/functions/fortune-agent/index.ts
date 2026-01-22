@@ -40,50 +40,72 @@ serve(async (req) => {
 
     console.log('Calling Bailian API (non-streaming)...')
 
-    // 调用阿里云百炼 API（非流式模式）
-    const baiLianResponse = await fetch(
-      'https://dashscope.aliyuncs.com/api/v1/apps/b464cfbaf21a45038b16a320606f0946/completion',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          input: { prompt: message },
-          parameters: { 
-            incremental_output: false // 禁用流式输出
-          }
-        })
-      }
-    )
+    // 添加超时控制（4分钟，留1分钟给网络传输）
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 240000) // 4分钟
 
-    console.log('Bailian API response status:', baiLianResponse.status)
-
-    if (!baiLianResponse.ok) {
-      const errorText = await baiLianResponse.text()
-      console.error('Bailian API error response:', errorText)
-      return new Response(
-        JSON.stringify({ 
-          error: 'AI 服务调用失败', 
-          details: errorText,
-          status: baiLianResponse.status 
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    try {
+      // 调用阿里云百炼 API（非流式模式）
+      const baiLianResponse = await fetch(
+        'https://dashscope.aliyuncs.com/api/v1/apps/b464cfbaf21a45038b16a320606f0946/completion',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            input: { prompt: message },
+            parameters: { 
+              incremental_output: false // 禁用流式输出
+            }
+          }),
+          signal: controller.signal
+        }
       )
-    }
 
-    const data = await baiLianResponse.json()
-    console.log('Bailian API success, has output:', !!data.output)
-    console.log('Output text length:', data.output?.text?.length || 0)
-    
-    return new Response(
-      JSON.stringify(data),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      clearTimeout(timeoutId)
+
+      console.log('Bailian API response status:', baiLianResponse.status)
+
+      if (!baiLianResponse.ok) {
+        const errorText = await baiLianResponse.text()
+        console.error('Bailian API error response:', errorText)
+        return new Response(
+          JSON.stringify({ 
+            error: 'AI 服务调用失败', 
+            details: errorText,
+            status: baiLianResponse.status 
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
-    )
+
+      const data = await baiLianResponse.json()
+      console.log('Bailian API success, has output:', !!data.output)
+      console.log('Output text length:', data.output?.text?.length || 0)
+      
+      return new Response(
+        JSON.stringify(data),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      
+      if (fetchError.name === 'AbortError') {
+        console.error('Bailian API timeout after 4 minutes')
+        return new Response(
+          JSON.stringify({ 
+            error: 'AI 推算超时，运势分析过于复杂，请简化问题后重试' 
+          }),
+          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      throw fetchError
+    }
     
   } catch (error) {
     console.error('Function error:', error.message)

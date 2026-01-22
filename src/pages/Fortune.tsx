@@ -51,11 +51,15 @@ export default function Fortune() {
     trackEvent('fortune_chat_send');
 
     try {
-      console.log('=== Fortune Request (Streaming) ===');
+      console.log('=== Fortune Request ===');
       console.log('User message:', userMessage);
       
       // 使用 anon key 作为 Bearer token
       const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es';
+      
+      // 添加5分钟超时控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5分钟
       
       const response = await fetch('https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/fortune-agent', {
         method: 'POST',
@@ -64,8 +68,11 @@ export default function Fortune() {
           'Authorization': `Bearer ${anonKey}`,
           'apikey': anonKey
         },
-        body: JSON.stringify({ message: userMessage })
+        body: JSON.stringify({ message: userMessage }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       console.log('Response status:', response.status);
       
@@ -107,7 +114,7 @@ export default function Fortune() {
       let errorMessage = '';
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          errorMessage = '请求超时，AI 正在思考较复杂的问题，请稍后重试';
+          errorMessage = '运势解析超时（5分钟），问题可能过于复杂，请简化后重试';
         } else if (error.message.includes('Failed to fetch')) {
           errorMessage = '网络连接失败，请检查网络后重试';
         } else {
@@ -171,10 +178,17 @@ export default function Fortune() {
           {isLoading && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-white border shadow-sm flex items-center justify-center">
-                <Bot className="h-5 w-5 text-purple-600" />
+                <Bot className="h-5 w-5 text-purple-600 animate-pulse" />
               </div>
-              <Card className="p-3 bg-white shadow-sm">
-                <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+              <Card className="p-4 bg-white shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 rounded-full bg-purple-600 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                  <span className="text-sm text-muted-foreground">正在推算运势，请稍候...</span>
+                </div>
               </Card>
             </div>
           )}
