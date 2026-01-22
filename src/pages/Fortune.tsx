@@ -51,15 +51,18 @@ export default function Fortune() {
     trackEvent('fortune_chat_send');
 
     try {
-      console.log('=== Fortune Request (No Auth) ===');
+      console.log('=== Fortune Request (Anon Key Auth) ===');
       console.log('User message:', userMessage);
       
-      // 直接用 fetch 调用，只发送 apikey，不发送 Authorization
+      // 使用 anon key 作为 Bearer token
+      const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es';
+      
       const response = await fetch('https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/fortune-agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es'
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey
         },
         body: JSON.stringify({ message: userMessage })
       });
