@@ -56,17 +56,35 @@ export default function Fortune() {
       console.log('User authenticated:', !!user);
       console.log('User ID:', user?.id);
       
+      // 获取当前 session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('Session check:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        sessionError: sessionError
+      });
+      
+      if (!session || !session.access_token) {
+        throw new Error('未登录或登录已过期，请重新登录');
+      }
+      
       const invokeOptions = {
-        body: { message: userMessage }
+        body: { message: userMessage },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       };
       
-      console.log('Invoke options:', invokeOptions);
+      console.log('Invoke options (with auth):', {
+        body: invokeOptions.body,
+        hasAuthHeader: !!invokeOptions.headers.Authorization
+      });
       console.log('Calling supabase.functions.invoke...');
       
       const result = await supabase.functions.invoke('fortune-agent', invokeOptions);
       
       console.log('=== Fortune Response ===');
-      console.log('Full result:', result);
+      console.log('Response status:', result.response?.status);
       console.log('Response data:', result.data);
       console.log('Response error:', result.error);
 
@@ -74,14 +92,15 @@ export default function Fortune() {
         console.error('Function invocation error details:', {
           name: result.error.name,
           message: result.error.message,
-          context: result.error.context,
-          details: result.error
+          status: result.response?.status
         });
         
-        // 尝试从错误中提取更多信息
-        const errorMsg = result.error.message || 
-                        result.error.context?.message || 
-                        'Function call failed';
+        // 特殊处理 401 错误
+        if (result.response?.status === 401) {
+          throw new Error('认证失败，请退出后重新登录');
+        }
+        
+        const errorMsg = result.error.message || 'Function call failed';
         throw new Error(errorMsg);
       }
 
@@ -116,7 +135,7 @@ export default function Fortune() {
       const errorMessage = error instanceof Error ? error.message : String(error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `❌ 出现错误：${errorMessage}\n\n可能原因：\n1. 服务未正确配置\n2. 网络连接问题\n3. API调用失败\n\n请联系管理员或稍后重试。` 
+        content: `❌ 出现错误：${errorMessage}\n\n可能原因：\n1. 登录已过期，请退出后重新登录\n2. 服务未正确配置\n3. 网络连接问题\n\n请尝试重新登录或联系管理员。` 
       }]);
       toast.error(`请求失败: ${errorMessage}`);
     } finally {
