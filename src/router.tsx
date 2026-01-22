@@ -7,6 +7,8 @@ import Profile from "./pages/Profile";
 import SearchPage from "./pages/SearchPage";
 import NotFound from "./pages/NotFound";
 
+import Fortune from "./pages/Fortune";
+
 export const routers = [
     {
       path: "/",
@@ -32,6 +34,11 @@ export const routers = [
       path: "/home",
       name: 'home',
       element: <Home />,
+    },
+    {
+      path: "/fortune",
+      name: 'fortune',
+      element: <Fortune />,
     },
     {
       path: "/profile",
