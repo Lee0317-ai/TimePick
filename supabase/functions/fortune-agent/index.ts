@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fortune agent called (non-streaming mode)')
+    console.log('Fortune agent called with streaming enabled')
     
     // 读取请求体
     const { message } = await req.json()
@@ -38,74 +38,51 @@ serve(async (req) => {
       )
     }
 
-    console.log('Calling Bailian API (non-streaming)...')
+    console.log('Calling Bailian API with SSE streaming...')
 
-    // 添加超时控制（4分钟，留1分钟给网络传输）
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 240000) // 4分钟
-
-    try {
-      // 调用阿里云百炼 API（非流式模式）
-      const baiLianResponse = await fetch(
-        'https://dashscope.aliyuncs.com/api/v1/apps/b464cfbaf21a45038b16a320606f0946/completion',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            input: { prompt: message },
-            parameters: { 
-              incremental_output: false // 禁用流式输出
-            }
-          }),
-          signal: controller.signal
-        }
-      )
-
-      clearTimeout(timeoutId)
-
-      console.log('Bailian API response status:', baiLianResponse.status)
-
-      if (!baiLianResponse.ok) {
-        const errorText = await baiLianResponse.text()
-        console.error('Bailian API error response:', errorText)
-        return new Response(
-          JSON.stringify({ 
-            error: 'AI 服务调用失败', 
-            details: errorText,
-            status: baiLianResponse.status 
-          }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+    // 调用阿里云百炼 API（启用流式输出）
+    const baiLianResponse = await fetch(
+      'https://dashscope.aliyuncs.com/api/v1/apps/b464cfbaf21a45038b16a320606f0946/completion',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'X-DashScope-SSE': 'enable',
+        },
+        body: JSON.stringify({
+          input: { prompt: message },
+          parameters: { 
+            incremental_output: true // 启用增量输出
+          }
+        })
       }
+    )
 
-      const data = await baiLianResponse.json()
-      console.log('Bailian API success, has output:', !!data.output)
-      console.log('Output text length:', data.output?.text?.length || 0)
-      
+    console.log('Bailian API response status:', baiLianResponse.status)
+
+    if (!baiLianResponse.ok) {
+      const errorText = await baiLianResponse.text()
+      console.error('Bailian API error response:', errorText)
       return new Response(
-        JSON.stringify(data),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ 
+          error: 'AI 服务调用失败', 
+          details: errorText,
+          status: baiLianResponse.status 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
-    } catch (fetchError) {
-      clearTimeout(timeoutId)
-      
-      if (fetchError.name === 'AbortError') {
-        console.error('Bailian API timeout after 4 minutes')
-        return new Response(
-          JSON.stringify({ 
-            error: 'AI 推算超时，运势分析过于复杂，请简化问题后重试' 
-          }),
-          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      throw fetchError
     }
+
+    // 直接转发SSE流
+    return new Response(baiLianResponse.body, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      }
+    })
     
   } catch (error) {
     console.error('Function error:', error.message)
