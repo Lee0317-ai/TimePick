@@ -51,43 +51,24 @@ export default function Fortune() {
     trackEvent('fortune_chat_send');
 
     try {
-      console.log('=== Fortune Request (Direct Fetch) ===');
+      console.log('=== Fortune Request ===');
       console.log('User message:', userMessage);
       
-      // 获取 session token
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.access_token) {
-        throw new Error('未登录，请先登录');
-      }
-      
-      // 直接使用 fetch 调用，不用 supabase SDK
-      const functionUrl = 'https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/fortune-agent';
-      
-      console.log('Calling URL:', functionUrl);
-      console.log('With token:', session.access_token.substring(0, 20) + '...');
-      
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es'
-        },
-        body: JSON.stringify({ message: userMessage })
+      // 使用 Supabase SDK 调用（无需手动处理认证）
+      const { data, error: invokeError } = await supabase.functions.invoke('fortune-agent', {
+        body: { message: userMessage }
       });
       
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
+      console.log('Response data:', data);
+      console.log('Response error:', invokeError);
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error(`请求失败 (${response.status}): ${errorText}`);
+      if (invokeError) {
+        throw new Error(invokeError.message);
       }
       
-      const data = await response.json();
-      console.log('Response data:', data);
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       // 解析响应
       let assistantMessage = '';
@@ -98,12 +79,11 @@ export default function Fortune() {
         assistantMessage = data.output.choices[0].message.content;
       } else if (data?.message) {
         assistantMessage = data.message;
-      } else if (data?.error) {
-        throw new Error(data.error);
       } else {
         assistantMessage = JSON.stringify(data, null, 2);
       }
 
+      console.log('Assistant message:', assistantMessage);
       setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
       
     } catch (error) {
