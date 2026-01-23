@@ -98,8 +98,8 @@ export function WeatherWidget() {
       setLoading(false);
       setRefreshing(false);
     } catch (error) {
-      console.error('Failed to fetch weather:', error);
-      toast.error('获取天气失败，请检查网络或稍后重试');
+      // 静默失败，不显示错误提示
+      console.warn('Weather fetch failed:', error);
       
       // 使用默认值
       if (!weather) {
