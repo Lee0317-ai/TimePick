@@ -96,7 +96,6 @@ export function WeatherWidget() {
         icon: current.weatherCode
       });
       setLoading(false);
-      setRefreshing(false);
     } catch (error) {
       // 静默失败，不显示错误提示
       console.warn('Weather fetch failed:', error);
@@ -111,6 +110,8 @@ export function WeatherWidget() {
         });
       }
       setLoading(false);
+    } finally {
+      // 确保无论成功或失败，都停止刷新动画
       setRefreshing(false);
     }
   }, [savedCity, weather]);
