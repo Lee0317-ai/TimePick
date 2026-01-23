@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles } from 'lucide-react';
+import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceTree } from '@/components/ResourceTree';
 import { ResourceList } from '@/components/ResourceList';
@@ -16,6 +16,7 @@ import { WeatherWidget } from '@/components/WeatherWidget';
 import { TreeNode } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { trackEvent } from '@/lib/analytics';
 
 export default function Home() {
@@ -30,6 +31,7 @@ export default function Home() {
   const [showModuleDialog, setShowModuleDialog] = useState(false);
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showVersionDialog, setShowVersionDialog] = useState(false);
 
   useEffect(() => {
     document.title = '首页 - 拾光';
@@ -175,6 +177,15 @@ export default function Home() {
             </Button>
             <Button
               variant="ghost"
+              size="sm"
+              className="flex items-center gap-2"
+              onClick={() => setShowVersionDialog(true)}
+            >
+              <FileText className="h-4 w-4" />
+              <span>更新</span>
+            </Button>
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => navigate('/profile')}
             >
@@ -283,6 +294,22 @@ export default function Home() {
         initialSectionId={selectedNode?.type === 'section' ? selectedNode.data.id : selectedNode?.section?.id}
         initialModuleId={selectedNode?.type === 'module' ? selectedNode.data.id : undefined}
       />
+
+      {/* 版本更新对话框 */}
+      <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>版本更新记录</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <iframe
+              src="https://pcn6dg6krayk.feishu.cn/docx/R6YEdtX8JoImvJxd6kwc1irhn9b?from=from_copylink"
+              className="w-full h-[60vh] border-0 rounded"
+              title="版本更新记录"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
