@@ -297,15 +297,17 @@ export default function Home() {
 
       {/* 版本更新对话框 */}
       <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>版本更新记录</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden">
+          <div className="w-full h-[60vh] overflow-hidden rounded border">
             <iframe
               src="https://pcn6dg6krayk.feishu.cn/docx/R6YEdtX8JoImvJxd6kwc1irhn9b?from=from_copylink"
-              className="w-full h-[60vh] border-0 rounded"
+              className="w-full h-full border-0"
               title="版本更新记录"
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+              loading="lazy"
             />
           </div>
         </DialogContent>
