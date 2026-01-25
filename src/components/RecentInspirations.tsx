@@ -9,9 +9,10 @@ import { Inspiration, ResourceInitData } from '@/types';
 interface RecentInspirationsProps {
   onConvertToResource: (data: ResourceInitData) => void;
   onViewAll: () => void;
+  refreshTrigger?: number;
 }
 
-export function RecentInspirations({ onConvertToResource, onViewAll }: RecentInspirationsProps) {
+export function RecentInspirations({ onConvertToResource, onViewAll, refreshTrigger }: RecentInspirationsProps) {
   const { user } = useAuth();
   const [inspirations, setInspirations] = useState<Inspiration[]>([]);
 
@@ -19,7 +20,7 @@ export function RecentInspirations({ onConvertToResource, onViewAll }: RecentIns
     if (user) {
       loadRecentInspirations();
     }
-  }, [user]);
+  }, [user, refreshTrigger]);
 
   const loadRecentInspirations = async () => {
     if (!user) return;

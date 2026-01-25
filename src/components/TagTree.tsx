@@ -88,11 +88,29 @@ export function TagTree({ selectedTags, onTagSelect, onNodeSelect }: TagTreeProp
     setExpandedGroups(newExpanded);
   };
 
-  // 按使用频率分组
+  // 预设标签颜色
+  const tagColors = [
+    '#f87171', '#fb923c', '#fbbf24', '#a3e635',
+    '#34d399', '#22d3ee', '#818cf8', '#c084fc',
+    '#f472b6', '#94a3b8'
+  ];
+
+  // 根据标签名生成稳定的颜色
+  const getTagColor = (tagName: string) => {
+    let hash = 0;
+    for (let i = 0; i < tagName.length; i++) {
+      hash = tagName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return tagColors[Math.abs(hash) % tagColors.length];
+  };
+
+  // 按使用频率分组（更细粒度）
   const getFrequencyGroup = (count: number) => {
-    if (count >= 10) return { key: 'freq_high', label: '高频使用 (10次以上)' };
-    if (count >= 5) return { key: 'freq_medium', label: '中频使用 (5-9次)' };
-    return { key: 'freq_low', label: '低频使用 (1-4次)' };
+    if (count >= 20) return { key: 'freq_very_high', label: '高频 (20+)', order: 0 };
+    if (count >= 10) return { key: 'freq_high', label: '常用 (10-19)', order: 1 };
+    if (count >= 5) return { key: 'freq_medium', label: '中频 (5-9)', order: 2 };
+    if (count >= 2) return { key: 'freq_low', label: '偶尔 (2-4)', order: 3 };
+    return { key: 'freq_rare', label: '少用 (1)', order: 4 };
   };
 
   const groupedTags = tags.reduce((acc, tagStat) => {
@@ -204,6 +222,11 @@ export function TagTree({ selectedTags, onTagSelect, onNodeSelect }: TagTreeProp
                               checked={selectedTags.includes(tag)}
                               onCheckedChange={() => handleTagToggle(tag)}
                               className="shrink-0"
+                            />
+                            {/* 颜色指示器 */}
+                            <div
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: getTagColor(tag) }}
                             />
                             <span className="flex-1 text-sm truncate">{tag}</span>
                             <Badge variant="secondary" className="text-xs shrink-0">

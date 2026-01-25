@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Trash2, Sparkles, Loader2, Tag } from 'lucide-react';
+import { Eye, Edit, Trash2, Sparkles, Loader2, Tag, MoreVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ResourcePreview } from './ResourcePreview';
 import { ResourceDialog } from './ResourceDialog';
-import { Resource } from '@/types';
+import { Resource, ViewType } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 import {
   AlertDialog,
@@ -19,15 +19,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ResourceCardProps {
   resource: Resource;
   onDelete?: () => void;
   highlightKeyword?: string;
   onView?: () => void;
+  viewType?: ViewType;
 }
 
-export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: ResourceCardProps) {
+export function ResourceCard({ resource, onDelete, highlightKeyword, onView, viewType = 'grid' }: ResourceCardProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -164,9 +177,167 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: R
     return text.replace(regex, '<mark class="bg-yellow-200 dark:bg-yellow-800">$1</mark>');
   };
 
+  // 操作菜单（用于紧凑视图）
+  const ActionDropdown = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+          <MoreVertical className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {resource.url && (
+          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAutoRecognize(); }} disabled={isRecognizing}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            {isRecognizing ? '识别中...' : '自动识别'}
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowPreview(true); }}>
+          <Eye className="h-4 w-4 mr-2" />
+          查看
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowEdit(true); }}>
+          <Edit className="h-4 w-4 mr-2" />
+          编辑
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }}
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          删除
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  // 缩略图视图
+  if (viewType === 'thumbnail') {
+    return (
+      <>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card
+                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+                onClick={() => setShowPreview(true)}
+              >
+                <div className="aspect-square bg-muted relative overflow-hidden">
+                  <img
+                    src={getThumbnail()}
+                    alt={resource.name}
+                    className="object-cover w-full h-full group-hover:scale-105 transition-transform"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-1">
+                      <ActionDropdown />
+                    </div>
+                  </div>
+                </div>
+                <div className="p-2">
+                  <h3 className="text-xs font-medium truncate">{resource.name}</h3>
+                </div>
+              </Card>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs">
+              <div className="space-y-1">
+                <p className="font-semibold">{resource.name}</p>
+                {resource.content && <p className="text-sm line-clamp-2">{resource.content}</p>}
+                {resource.tags && resource.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {resource.tags.map(tag => (
+                      <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <ResourcePreview resource={resource} open={showPreview} onOpenChange={setShowPreview} />
+        <ResourceDialog open={showEdit} onOpenChange={setShowEdit} editResource={resource} onSuccess={onDelete} />
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除</AlertDialogTitle>
+              <AlertDialogDescription>确定要删除资源"{resource.name}"吗？此操作无法撤销。</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>确认删除</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // 列表视图
+  if (viewType === 'list') {
+    return (
+      <>
+        <Card
+          className="flex items-center gap-3 p-3 hover:shadow-md transition-all cursor-pointer"
+          onClick={() => setShowPreview(true)}
+        >
+          {/* 左侧缩略图 */}
+          <div className="shrink-0 w-16 h-16 rounded-lg bg-muted overflow-hidden">
+            <img
+              src={getThumbnail()}
+              alt={resource.name}
+              className="object-cover w-full h-full"
+            />
+          </div>
+
+          {/* 中间信息 */}
+          <div className="flex-1 min-w-0">
+            <h3
+              className="font-medium truncate text-sm"
+              dangerouslySetInnerHTML={{ __html: highlightText(resource.name) }}
+            />
+            {resource.content && (
+              <p
+                className="text-xs text-muted-foreground line-clamp-1"
+                dangerouslySetInnerHTML={{ __html: highlightText(resource.content) }}
+              />
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className="text-xs">{resource.sections?.name || '未分类'}</Badge>
+              {resource.tags && resource.tags.length > 0 && (
+                <Badge variant="secondary" className="text-xs">{resource.tags[0]}{resource.tags.length > 1 && ` +${resource.tags.length - 1}`}</Badge>
+              )}
+              <span className="text-xs text-muted-foreground">{new Date(resource.created_at).toLocaleDateString('zh-CN')}</span>
+            </div>
+          </div>
+
+          {/* 右侧操作按钮 */}
+          <ActionDropdown />
+        </Card>
+
+        <ResourcePreview resource={resource} open={showPreview} onOpenChange={setShowPreview} />
+        <ResourceDialog open={showEdit} onOpenChange={setShowEdit} editResource={resource} onSuccess={onDelete} />
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除</AlertDialogTitle>
+              <AlertDialogDescription>确定要删除资源"{resource.name}"吗？此操作无法撤销。</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>确认删除</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // 网格视图（默认）
   return (
     <>
-      <Card 
+      <Card
         className="overflow-hidden hover:shadow-lg transition-shadow cursor-move"
         draggable
         onDragStart={(e) => {
@@ -194,7 +365,7 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: R
               {resource.modules.name}
             </Badge>
           )}
-          
+
           {/* 显示标签 */}
           {resource.tags && resource.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
@@ -211,7 +382,7 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: R
               )}
             </div>
           )}
-          
+
           {/* 显示简介（content） */}
           {resource.content && (
             <p

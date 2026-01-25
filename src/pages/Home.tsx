@@ -277,7 +277,7 @@ export default function Home() {
               <Sparkles className="h-4 w-4" />
               <span>算运势</span>
             </Button>
-            {/* <Button
+            <Button
               variant="ghost"
               size="sm"
               className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
@@ -288,8 +288,8 @@ export default function Home() {
             >
               <Lightbulb className="h-4 w-4" />
               <span>灵感</span>
-            </Button> */}
-            {/* <Button
+            </Button> 
+             <Button
               variant="ghost"
               size="sm"
               className="flex items-center gap-2"
@@ -305,7 +305,7 @@ export default function Home() {
                   {selectedTags.length}
                 </span>
               )}
-            </Button> */}
+            </Button> 
             <Button
               variant="ghost"
               size="sm"
@@ -388,6 +388,17 @@ export default function Home() {
                   >
                     <LayoutList className="h-4 w-4" />
                   </Button>
+                  <Button
+                    variant={viewMode === 'tags' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setViewMode('tags');
+                      trackEvent('dimension_switch_click', { mode: 'tags' });
+                    }}
+                    title="标签"
+                  >
+                    <Tag className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
               <ScrollArea className="h-[calc(100vh-200px)]">
@@ -400,6 +411,12 @@ export default function Home() {
                     refreshTrigger={refreshTrigger}
                     isCollector={currentRole === 'collector'}
                     onResourceMove={handleRefresh}
+                  />
+                ) : viewMode === 'tags' ? (
+                  <TagTree
+                    selectedTags={selectedTags}
+                    onTagSelect={setSelectedTags}
+                    onNodeSelect={handleNodeSelect}
                   />
                 ) : (
                   <ResourceTree
@@ -426,6 +443,8 @@ export default function Home() {
             onNodeSelect={handleNodeSelect}
             onEditFolder={handleEditFolder}
             selectedTags={selectedTags}
+            onConvertToResource={handleConvertToResource}
+            onViewAllInspirations={() => setShowInspirationDrawer(true)}
           />
         </main>
       </div>

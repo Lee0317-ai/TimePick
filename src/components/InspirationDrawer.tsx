@@ -14,18 +14,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Mic, 
-  MicOff, 
-  Save, 
-  Trash2, 
-  Edit, 
-  MapPin, 
+import {
+  Mic,
+  MicOff,
+  Save,
+  Trash2,
+  Edit,
+  MapPin,
   Lightbulb,
   Plus,
   Loader2,
   X,
-  FileText
+  FileText,
+  Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Inspiration, ResourceInitData } from '@/types';
@@ -403,12 +404,13 @@ export function InspirationDrawer({ open, onOpenChange, onConvertToResource }: I
                       <div
                         key={inspiration.id}
                         className={`p-4 bg-card border rounded-lg hover:shadow-md transition-all ${
-                          inspiration.status === 'converted' ? 'opacity-60 bg-muted/30' : ''
+                          inspiration.status === 'converted' ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20' : ''
                         }`}
                       >
                         {inspiration.status === 'converted' && (
-                          <Badge variant="secondary" className="mb-2 text-xs">
-                            ✓ 已转换为资源
+                          <Badge className="mb-2 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:bg-green-100">
+                            <Check className="h-3 w-3 mr-1" />
+                            已转换为资源
                           </Badge>
                         )}
                         <div className="flex items-start justify-between gap-2 mb-2">

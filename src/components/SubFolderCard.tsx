@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Folder, Edit, Trash2, FolderOpen } from 'lucide-react';
+import { Folder, Edit, Trash2, FolderOpen, MoreVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Folder as FolderType } from '@/types';
@@ -17,15 +17,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface SubFolderCardProps {
   folder: FolderType;
   onOpen: (folder: FolderType) => void;
   onEdit: (folder: FolderType) => void;
   onDelete?: () => void;
+  compact?: boolean;
 }
 
-export function SubFolderCard({ folder, onOpen, onEdit, onDelete }: SubFolderCardProps) {
+export function SubFolderCard({ folder, onOpen, onEdit, onDelete, compact = false }: SubFolderCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [subFolderCount, setSubFolderCount] = useState(0);
   const [resourceCount, setResourceCount] = useState(0);
@@ -67,9 +74,97 @@ export function SubFolderCard({ folder, onOpen, onEdit, onDelete }: SubFolderCar
     setShowDeleteDialog(false);
   };
 
+  // 计算总资源数（用于紧凑模式显示）
+  const totalCount = subFolderCount + resourceCount;
+
+  // 紧凑模式（移动端）
+  if (compact) {
+    return (
+      <>
+        <Card
+          className="flex items-center gap-3 p-3 hover:shadow-md transition-all cursor-pointer"
+          onClick={() => {
+            onOpen(folder);
+            trackEvent('folder_open_click', { folderId: folder.id });
+          }}
+        >
+          {/* 左侧图标 */}
+          <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Folder className="h-5 w-5 text-primary" />
+          </div>
+
+          {/* 中间文件夹名和统计 */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium truncate text-sm">{folder.name}</h3>
+            <p className="text-xs text-muted-foreground">
+              {totalCount > 0 ? `${totalCount} 个资源` : '空文件夹'}
+            </p>
+          </div>
+
+          {/* 右侧更多按钮 */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                onOpen(folder);
+                trackEvent('folder_open_button_click', { folderId: folder.id });
+              }}>
+                <FolderOpen className="h-4 w-4 mr-2" />
+                打开
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => {
+                e.stopPropagation();
+                onEdit(folder);
+                trackEvent('folder_edit_click', { folderId: folder.id });
+              }}>
+                <Edit className="h-4 w-4 mr-2" />
+                编辑
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteDialog(true);
+                  trackEvent('folder_delete_click', { folderId: folder.id });
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                删除
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </Card>
+
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除文件夹</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除文件夹"{folder.name}"吗？此操作无法撤销。
+                该文件夹下的所有子文件夹和资源都将被删除。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                确认删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // 原有桌面端完整卡片布局
   return (
     <>
-      <Card 
+      <Card
         className="overflow-hidden hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer group"
         onClick={() => {
           onOpen(folder);

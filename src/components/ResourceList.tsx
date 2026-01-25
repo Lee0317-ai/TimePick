@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,8 +14,11 @@ import {
 import { ResourceCard } from './ResourceCard';
 import { SubFolderCard } from './SubFolderCard';
 import { EmptyState } from './EmptyState';
-import { Loader2, Tag, Folder as FolderIcon, FileText } from 'lucide-react';
-import { Resource, TreeNode, Folder } from '@/types';
+import { RecentInspirations } from './RecentInspirations';
+import { Loader2, Tag, Folder as FolderIcon, FileText, LayoutGrid, List, Image } from 'lucide-react';
+import { Resource, TreeNode, Folder, ViewType, ResourceInitData } from '@/types';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useViewPreference } from '@/hooks/useViewPreference';
 
 interface ResourceListProps {
   selectedNode: TreeNode | null;
@@ -23,14 +27,19 @@ interface ResourceListProps {
   onNodeSelect?: (node: TreeNode) => void;
   onEditFolder?: (folder: Folder) => void;
   selectedTags?: string[];
+  onConvertToResource?: (data: ResourceInitData) => void;
+  onViewAllInspirations?: () => void;
 }
 
-export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSelect, onEditFolder, selectedTags = [] }: ResourceListProps) {
+export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSelect, onEditFolder, selectedTags = [], onConvertToResource, onViewAllInspirations }: ResourceListProps) {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [resources, setResources] = useState<Resource[]>([]);
   const [subFolders, setSubFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(false);
   const [folderPath, setFolderPath] = useState<Folder[]>([]);
+  const [resourceViewType, setResourceViewType] = useViewPreference('resources', 'grid');
+  const [folderViewType, setFolderViewType] = useViewPreference('folders', 'grid');
 
   const loadResources = useCallback(async () => {
     if (!user) return;
@@ -222,11 +231,54 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
     );
   }
 
+  // 视图切换按钮组
+  const renderViewSwitcher = (viewType: ViewType, setViewType: (v: ViewType) => void, label: string) => (
+    <div className="flex items-center gap-1">
+      <span className="text-xs text-muted-foreground mr-1">{label}:</span>
+      <Button
+        variant={viewType === 'grid' ? 'default' : 'ghost'}
+        size="icon"
+        className="h-7 w-7"
+        onClick={() => setViewType('grid')}
+        title="网格视图"
+      >
+        <LayoutGrid className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        variant={viewType === 'list' ? 'default' : 'ghost'}
+        size="icon"
+        className="h-7 w-7"
+        onClick={() => setViewType('list')}
+        title="列表视图"
+      >
+        <List className="h-3.5 w-3.5" />
+      </Button>
+      <Button
+        variant={viewType === 'thumbnail' ? 'default' : 'ghost'}
+        size="icon"
+        className="h-7 w-7"
+        onClick={() => setViewType('thumbnail')}
+        title="缩略图视图"
+      >
+        <Image className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+
   return (
     <div className="h-full flex flex-col">
       <div className="border-b p-4 space-y-3">
-        {renderBreadcrumb()}
-        
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          {renderBreadcrumb()}
+          {/* 视图切换按钮 - PC端和手机端都显示 */}
+          {(subFolders.length > 0 || resources.length > 0) && (
+            <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+              {subFolders.length > 0 && renderViewSwitcher(folderViewType, setFolderViewType, isMobile ? '夹' : '文件夹')}
+              {resources.length > 0 && renderViewSwitcher(resourceViewType, setResourceViewType, isMobile ? '源' : '资源')}
+            </div>
+          )}
+        </div>
+
         {/* 标签过滤提示 */}
         {selectedTags && selectedTags.length > 0 && (
           <div className="flex items-center gap-2 text-sm">
@@ -271,6 +323,16 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
           </div>
         ) : (
           <div className="p-4 space-y-6">
+            {/* 最近灵感 - 在全部资源或根目录时显示 */}
+            {onConvertToResource && onViewAllInspirations &&
+             (selectedNode?.type === 'all' || (selectedNode?.type === 'folder' && folderPath.length === 0)) && (
+              <RecentInspirations
+                onConvertToResource={onConvertToResource}
+                onViewAll={onViewAllInspirations}
+                refreshTrigger={refreshTrigger}
+              />
+            )}
+
             {/* 显示子文件夹 */}
             {subFolders.length > 0 && (
               <div>
@@ -278,7 +340,15 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
                   <span>文件夹</span>
                   <span className="text-xs">({subFolders.length})</span>
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className={
+                  isMobile
+                    ? 'flex flex-col gap-2'
+                    : folderViewType === 'grid'
+                      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+                      : folderViewType === 'list'
+                        ? 'flex flex-col gap-2'
+                        : 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2'
+                }>
                   {subFolders.map((folder) => (
                     <SubFolderCard
                       key={folder.id}
@@ -286,12 +356,13 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
                       onOpen={(folder) => onNodeSelect?.({ type: 'folder', data: folder })}
                       onEdit={(folder) => onEditFolder?.(folder)}
                       onDelete={onRefresh}
+                      compact={isMobile || folderViewType === 'list' || folderViewType === 'thumbnail'}
                     />
                   ))}
                 </div>
               </div>
             )}
-            
+
             {/* 显示资源 */}
             {resources.length > 0 && (
               <div>
@@ -301,12 +372,19 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
                     <span className="text-xs">({resources.length})</span>
                   </h2>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className={
+                  resourceViewType === 'grid'
+                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+                    : resourceViewType === 'list'
+                      ? 'flex flex-col gap-2'
+                      : 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2'
+                }>
                   {resources.map((resource) => (
                     <ResourceCard
                       key={resource.id}
                       resource={resource}
                       onDelete={onRefresh}
+                      viewType={resourceViewType}
                     />
                   ))}
                 </div>

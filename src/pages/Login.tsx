@@ -46,7 +46,7 @@ export default function Login() {
       toast.error(error.message || '登录失败');
     } else {
       toast.success('登录成功');
-      navigate('/role-select');
+      navigate('/home');
     }
   };
 

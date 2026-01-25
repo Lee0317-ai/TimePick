@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Edit, Loader2, Check, X } from 'lucide-react';
+import { Trash2, Edit, Loader2, Check, X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -38,6 +38,8 @@ export function TagManageDialog({ open, onOpenChange, onTagsUpdated }: TagManage
   const [editValue, setEditValue] = useState('');
   const [deleteTag, setDeleteTag] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [isAddingTag, setIsAddingTag] = useState(false);
 
   useEffect(() => {
     if (open && user) {
@@ -145,6 +147,57 @@ export function TagManageDialog({ open, onOpenChange, onTagsUpdated }: TagManage
     }
   };
 
+  // 新增标签（创建一个隐藏的资源来承载新标签）
+  const handleAddTag = async () => {
+    if (!user || !newTagName.trim()) return;
+
+    const tagName = newTagName.trim();
+
+    // 检查标签是否已存在
+    if (tags.some(t => t.tag.toLowerCase() === tagName.toLowerCase())) {
+      toast.error('该标签已存在');
+      return;
+    }
+
+    setIsAddingTag(true);
+    try {
+      // 通过 RPC 或直接更新一个已有资源来添加新标签
+      // 为了简化，我们创建一个新的"占位资源"来承载这个标签
+      // 或者我们可以使用 RPC 函数。这里我们采用更简单的方式：
+      // 获取用户的第一个资源并添加标签
+      const { data: resources } = await supabase
+        .from('resources')
+        .select('id, tags')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (resources && resources.length > 0) {
+        const resource = resources[0];
+        const existingTags = resource.tags || [];
+        const newTags = [...existingTags, tagName];
+
+        const { error } = await supabase
+          .from('resources')
+          .update({ tags: newTags })
+          .eq('id', resource.id);
+
+        if (error) throw error;
+
+        toast.success('标签已创建');
+        setNewTagName('');
+        await loadTags();
+        onTagsUpdated?.();
+      } else {
+        toast.error('请先创建一个资源后再添加标签');
+      }
+    } catch (error) {
+      console.error('Add tag error:', error);
+      toast.error('添加标签失败');
+    } finally {
+      setIsAddingTag(false);
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -152,6 +205,34 @@ export function TagManageDialog({ open, onOpenChange, onTagsUpdated }: TagManage
           <DialogHeader>
             <DialogTitle>标签管理</DialogTitle>
           </DialogHeader>
+
+          {/* 新增标签 */}
+          <div className="flex gap-2">
+            <Input
+              placeholder="输入新标签名称"
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newTagName.trim()) {
+                  handleAddTag();
+                }
+              }}
+              disabled={isAddingTag}
+            />
+            <Button
+              onClick={handleAddTag}
+              disabled={isAddingTag || !newTagName.trim()}
+            >
+              {isAddingTag ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-1" />
+                  添加
+                </>
+              )}
+            </Button>
+          </div>
 
           {/* 提示信息 */}
           <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded">
