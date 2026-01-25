@@ -10,24 +10,63 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { ResourceCard } from './ResourceCard';
+import { SubFolderCard } from './SubFolderCard';
 import { Loader2 } from 'lucide-react';
-import { Resource, TreeNode } from '@/types';
+import { Resource, TreeNode, Folder } from '@/types';
 
 interface ResourceListProps {
   selectedNode: TreeNode | null;
   refreshTrigger: number;
   onRefresh: () => void;
+  onNodeSelect?: (node: TreeNode) => void;
+  onEditFolder?: (folder: Folder) => void;
 }
 
-export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: ResourceListProps) {
+export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSelect, onEditFolder }: ResourceListProps) {
   const { user } = useAuth();
   const [resources, setResources] = useState<Resource[]>([]);
+  const [subFolders, setSubFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(false);
+  const [folderPath, setFolderPath] = useState<Folder[]>([]);
 
   const loadResources = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
+    
+    // 如果是文件夹视图，需要加载子文件夹
+    if (selectedNode?.type === 'folder') {
+      const folderId = selectedNode.data.id;
+      
+      // 加载子文件夹
+      const { data: folders } = await supabase
+        .from('folders')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('parent_id', folderId)
+        .order('sort_order');
+      
+      setSubFolders(folders || []);
+      
+      // 加载文件夹路径（面包屑）
+      await loadFolderPath(folderId);
+    } else if (selectedNode?.type === 'all') {
+      // 全部资源视图 - 加载根文件夹
+      const { data: folders } = await supabase
+        .from('folders')
+        .select('*')
+        .eq('user_id', user.id)
+        .is('parent_id', null)
+        .order('sort_order');
+      
+      setSubFolders(folders || []);
+      setFolderPath([]);
+    } else {
+      setSubFolders([]);
+      setFolderPath([]);
+    }
+    
+    // 加载资源
     let query = supabase
       .from('resources')
       .select(`
@@ -38,7 +77,6 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
       .eq('user_id', user.id);
 
     if (selectedNode?.type === 'folder') {
-      // 文件夹过滤
       query = query.eq('folder_id', selectedNode.data.id);
     } else if (selectedNode?.type === 'section') {
       query = query.eq('section_id', selectedNode.data.id);
@@ -50,8 +88,6 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
       if (selectedNode.section) {
         query = query.eq('section_id', selectedNode.section.id);
       }
-    } else if (selectedNode?.type === 'all') {
-      // 不添加额外过滤条件，查询所有资源
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });
@@ -61,6 +97,29 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
       setResources(data as Resource[]);
     }
   }, [user, selectedNode]);
+
+  // 加载文件夹路径（用于面包屑）
+  const loadFolderPath = async (folderId: string) => {
+    const path: Folder[] = [];
+    let currentId: string | null = folderId;
+    
+    while (currentId) {
+      const { data } = await supabase
+        .from('folders')
+        .select('*')
+        .eq('id', currentId)
+        .single();
+      
+      if (data) {
+        path.unshift(data as Folder);
+        currentId = data.parent_id;
+      } else {
+        break;
+      }
+    }
+    
+    setFolderPath(path);
+  };
 
   useEffect(() => {
     if (selectedNode) {
@@ -75,7 +134,12 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink>首页</BreadcrumbLink>
+            <BreadcrumbLink 
+              className="cursor-pointer hover:text-primary"
+              onClick={() => onNodeSelect?.({ type: 'all', data: { id: 'all', name: '全部资源' } })}
+            >
+              首页
+            </BreadcrumbLink>
           </BreadcrumbItem>
           {selectedNode.type === 'all' ? (
             <>
@@ -86,12 +150,24 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
             </>
           ) : selectedNode.type === 'folder' ? (
             <>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink className="font-semibold">
-                  {selectedNode.data.name}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
+              {/* 显示文件夹路径 */}
+              {folderPath.map((folder, index) => (
+                <div key={folder.id} className="flex items-center">
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbLink 
+                      className={index === folderPath.length - 1 ? "font-semibold" : "cursor-pointer hover:text-primary"}
+                      onClick={() => {
+                        if (index < folderPath.length - 1) {
+                          onNodeSelect?.({ type: 'folder', data: folder });
+                        }
+                      }}
+                    >
+                      {folder.name}
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                </div>
+              ))}
             </>
           ) : (
             <>
@@ -143,19 +219,53 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
-        ) : resources.length === 0 ? (
+        ) : subFolders.length === 0 && resources.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground">
-            暂无资源
+            {selectedNode?.type === 'folder' || selectedNode?.type === 'all' ? '暂无文件夹或资源' : '暂无资源'}
           </div>
         ) : (
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {resources.map((resource) => (
-              <ResourceCard
-                key={resource.id}
-                resource={resource}
-                onDelete={onRefresh}
-              />
-            ))}
+          <div className="p-4 space-y-6">
+            {/* 显示子文件夹 */}
+            {subFolders.length > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  <span>文件夹</span>
+                  <span className="text-xs">({subFolders.length})</span>
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {subFolders.map((folder) => (
+                    <SubFolderCard
+                      key={folder.id}
+                      folder={folder}
+                      onOpen={(folder) => onNodeSelect?.({ type: 'folder', data: folder })}
+                      onEdit={(folder) => onEditFolder?.(folder)}
+                      onDelete={onRefresh}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* 显示资源 */}
+            {resources.length > 0 && (
+              <div>
+                {subFolders.length > 0 && (
+                  <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                    <span>资源</span>
+                    <span className="text-xs">({resources.length})</span>
+                  </h2>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {resources.map((resource) => (
+                    <ResourceCard
+                      key={resource.id}
+                      resource={resource}
+                      onDelete={onRefresh}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </ScrollArea>

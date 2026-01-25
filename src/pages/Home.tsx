@@ -68,6 +68,13 @@ export default function Home() {
     checkRole();
   }, [user, navigate]);
 
+  // 当切换到文件夹视图且没有选中节点时，自动选中全部资源
+  useEffect(() => {
+    if (viewMode === 'folder' && !selectedNode) {
+      setSelectedNode({ type: 'all', data: { id: 'all', name: '全部资源' } });
+    }
+  }, [viewMode, selectedNode]);
+
   const handleRoleChange = async (role: string) => {
     if (!user || (role !== 'collector' && role !== 'searcher')) return;
 
@@ -336,6 +343,8 @@ export default function Home() {
             selectedNode={selectedNode}
             refreshTrigger={refreshTrigger}
             onRefresh={handleRefresh}
+            onNodeSelect={handleNodeSelect}
+            onEditFolder={handleEditFolder}
           />
         </main>
       </div>
