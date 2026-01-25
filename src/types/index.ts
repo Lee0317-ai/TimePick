@@ -43,9 +43,20 @@ export interface Profile {
   storage_limit: number;
 }
 
+export interface Folder {
+  id: string;
+  user_id: string;
+  name: string;
+  parent_id: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TreeNode {
-  type: 'section' | 'module' | 'all';
-  data: Section | Module | { id: string; name: string };
+  type: 'section' | 'module' | 'all' | 'folder';
+  data: Section | Module | Folder | { id: string; name: string };
   section?: Section;
   module?: Module;
+  folder?: Folder;
 }

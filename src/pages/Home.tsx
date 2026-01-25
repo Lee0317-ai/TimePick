@@ -6,14 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText } from 'lucide-react';
+import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceTree } from '@/components/ResourceTree';
+import { FolderTree } from '@/components/FolderTree';
 import { ResourceList } from '@/components/ResourceList';
 import { ModuleDialog } from '@/components/ModuleDialog';
+import { FolderDialog } from '@/components/FolderDialog';
 import { ResourceDialog } from '@/components/ResourceDialog';
 import { WeatherWidget } from '@/components/WeatherWidget';
-import { TreeNode } from '@/types';
+import { TreeNode, Folder } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,10 +27,13 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<'collector' | 'searcher'>('collector');
-  const [viewMode, setViewMode] = useState<'section' | 'module'>('section');
+  const [viewMode, setViewMode] = useState<'section' | 'module' | 'folder'>('folder');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [showModuleDialog, setShowModuleDialog] = useState(false);
+  const [showFolderDialog, setShowFolderDialog] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<Folder | undefined>(undefined);
+  const [parentFolderId, setParentFolderId] = useState<string | undefined>(undefined);
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showVersionDialog, setShowVersionDialog] = useState(false);
@@ -101,6 +106,24 @@ export default function Home() {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const handleAddFolder = (parentId?: string) => {
+    setParentFolderId(parentId);
+    setEditingFolder(undefined);
+    setShowFolderDialog(true);
+  };
+
+  const handleEditFolder = (folder: Folder) => {
+    setEditingFolder(folder);
+    setParentFolderId(undefined);
+    setShowFolderDialog(true);
+  };
+
+  const handleFolderDialogClose = () => {
+    setShowFolderDialog(false);
+    setEditingFolder(undefined);
+    setParentFolderId(undefined);
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* 顶部导航栏 */}
@@ -121,12 +144,24 @@ export default function Home() {
                     <div className="p-4 border-b flex items-center justify-between">
                       <div className="flex gap-2">
                         <Button
+                          variant={viewMode === 'folder' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => {
+                            setViewMode('folder');
+                            trackEvent('dimension_switch_click', { mode: 'folder' });
+                          }}
+                          title="文件夹"
+                        >
+                          <FolderTreeIcon className="h-4 w-4" />
+                        </Button>
+                        <Button
                           variant={viewMode === 'section' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => {
                             setViewMode('section');
                             trackEvent('dimension_switch_click', { mode: 'section' });
                           }}
+                          title="板块"
                         >
                           <LayoutGrid className="h-4 w-4" />
                         </Button>
@@ -137,21 +172,34 @@ export default function Home() {
                             setViewMode('module');
                             trackEvent('dimension_switch_click', { mode: 'module' });
                           }}
+                          title="模块"
                         >
                           <LayoutList className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
                     <ScrollArea className="flex-1">
-                      <ResourceTree
-                        viewMode={viewMode}
-                        onNodeSelect={handleNodeSelect}
-                        onAddModule={() => setShowModuleDialog(true)}
-                        onAddResource={() => setShowResourceDialog(true)}
-                        refreshTrigger={refreshTrigger}
-                        isCollector={currentRole === 'collector'}
-                        onResourceMove={handleRefresh}
-                      />
+                      {viewMode === 'folder' ? (
+                        <FolderTree
+                          onNodeSelect={handleNodeSelect}
+                          onAddFolder={handleAddFolder}
+                          onEditFolder={handleEditFolder}
+                          onAddResource={() => setShowResourceDialog(true)}
+                          refreshTrigger={refreshTrigger}
+                          isCollector={currentRole === 'collector'}
+                          onResourceMove={handleRefresh}
+                        />
+                      ) : (
+                        <ResourceTree
+                          viewMode={viewMode as 'section' | 'module'}
+                          onNodeSelect={handleNodeSelect}
+                          onAddModule={() => setShowModuleDialog(true)}
+                          onAddResource={() => setShowResourceDialog(true)}
+                          refreshTrigger={refreshTrigger}
+                          isCollector={currentRole === 'collector'}
+                          onResourceMove={handleRefresh}
+                        />
+                      )}
                     </ScrollArea>
                   </div>
                 </SheetContent>
@@ -222,12 +270,24 @@ export default function Home() {
             <div className="p-4 border-b flex items-center justify-between">
               <div className="flex gap-2">
                 <Button
+                  variant={viewMode === 'folder' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setViewMode('folder');
+                    trackEvent('dimension_switch_click', { mode: 'folder' });
+                  }}
+                  title="文件夹"
+                >
+                  <FolderTreeIcon className="h-4 w-4" />
+                </Button>
+                <Button
                   variant={viewMode === 'section' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => {
                     setViewMode('section');
                     trackEvent('dimension_switch_click', { mode: 'section' });
                   }}
+                  title="板块"
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
@@ -238,21 +298,34 @@ export default function Home() {
                     setViewMode('module');
                     trackEvent('dimension_switch_click', { mode: 'module' });
                   }}
+                  title="模块"
                 >
                   <LayoutList className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             <ScrollArea className="h-[calc(100vh-200px)]">
-              <ResourceTree
-                viewMode={viewMode}
-                onNodeSelect={handleNodeSelect}
-                onAddModule={() => setShowModuleDialog(true)}
-                onAddResource={() => setShowResourceDialog(true)}
-                refreshTrigger={refreshTrigger}
-                isCollector={currentRole === 'collector'}
-                onResourceMove={handleRefresh}
-              />
+              {viewMode === 'folder' ? (
+                <FolderTree
+                  onNodeSelect={handleNodeSelect}
+                  onAddFolder={handleAddFolder}
+                  onEditFolder={handleEditFolder}
+                  onAddResource={() => setShowResourceDialog(true)}
+                  refreshTrigger={refreshTrigger}
+                  isCollector={currentRole === 'collector'}
+                  onResourceMove={handleRefresh}
+                />
+              ) : (
+                <ResourceTree
+                  viewMode={viewMode as 'section' | 'module'}
+                  onNodeSelect={handleNodeSelect}
+                  onAddModule={() => setShowModuleDialog(true)}
+                  onAddResource={() => setShowResourceDialog(true)}
+                  refreshTrigger={refreshTrigger}
+                  isCollector={currentRole === 'collector'}
+                  onResourceMove={handleRefresh}
+                />
+              )}
             </ScrollArea>
           </aside>
         )}
@@ -269,16 +342,34 @@ export default function Home() {
 
       {/* 悬浮录入按钮 */}
       {currentRole === 'collector' && (
-        <Button
-          className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg"
-          size="icon"
-          onClick={() => {
-            setShowResourceDialog(true);
-            trackEvent('home_entry_click');
-          }}
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
+        <>
+          <Button
+            className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg"
+            size="icon"
+            onClick={() => {
+              setShowResourceDialog(true);
+              trackEvent('home_entry_click');
+            }}
+          >
+            <Plus className="h-6 w-6" />
+          </Button>
+          
+          {/* 新建文件夹按钮（仅在文件夹视图时显示） */}
+          {viewMode === 'folder' && (
+            <Button
+              className="fixed bottom-24 right-8 h-12 w-12 rounded-full shadow-lg"
+              size="icon"
+              variant="secondary"
+              onClick={() => {
+                handleAddFolder();
+                trackEvent('folder_add_click');
+              }}
+              title="新建文件夹"
+            >
+              <FolderTreeIcon className="h-5 w-5" />
+            </Button>
+          )}
+        </>
       )}
 
       {/* 对话框 */}
@@ -287,12 +378,20 @@ export default function Home() {
         onOpenChange={setShowModuleDialog}
         onSuccess={handleRefresh}
       />
+      <FolderDialog
+        open={showFolderDialog}
+        onOpenChange={handleFolderDialogClose}
+        onSuccess={handleRefresh}
+        editFolder={editingFolder}
+        parentId={parentFolderId}
+      />
       <ResourceDialog
         open={showResourceDialog}
         onOpenChange={setShowResourceDialog}
         onSuccess={handleRefresh}
         initialSectionId={selectedNode?.type === 'section' ? selectedNode.data.id : selectedNode?.section?.id}
         initialModuleId={selectedNode?.type === 'module' ? selectedNode.data.id : undefined}
+        initialFolderId={selectedNode?.type === 'folder' ? selectedNode.data.id : undefined}
       />
 
       {/* 版本更新对话框 */}

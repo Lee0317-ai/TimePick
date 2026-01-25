@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Upload, X, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { Section, Module, Resource } from '@/types';
+import { Section, Module, Resource, Folder } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 
 interface ResourceDialogProps {
@@ -19,16 +19,19 @@ interface ResourceDialogProps {
   editResource?: Resource;
   initialSectionId?: string;
   initialModuleId?: string;
+  initialFolderId?: string;
 }
 
-export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, initialSectionId, initialModuleId }: ResourceDialogProps) {
+export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, initialSectionId, initialModuleId, initialFolderId }: ResourceDialogProps) {
   const { user } = useAuth();
   const [sections, setSections] = useState<Section[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [filteredModules, setFilteredModules] = useState<Module[]>([]);
   
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedModule, setSelectedModule] = useState('none');
+  const [selectedFolder, setSelectedFolder] = useState('none');
   const [resourceName, setResourceName] = useState('');
   const [url, setUrl] = useState('');
   const [content, setContent] = useState('');
@@ -55,14 +58,30 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
     }
   }, [user]);
 
+  const loadFolders = useCallback(async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('folders')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('sort_order');
+
+    if (data) {
+      setFolders(data as Folder[]);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (open) {
       loadSections();
       loadModules();
+      loadFolders();
       
       if (editResource) {
         setSelectedSection(editResource.section_id);
         setSelectedModule(editResource.module_id || 'none');
+        setSelectedFolder(editResource.folder_id || 'none');
         setResourceName(editResource.name);
         setUrl(editResource.url || '');
         setContent(editResource.content || '');
@@ -71,11 +90,12 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         trackEvent('resource_add_expose');
         if (initialSectionId) setSelectedSection(initialSectionId);
         if (initialModuleId) setSelectedModule(initialModuleId);
+        if (initialFolderId) setSelectedFolder(initialFolderId);
       }
     } else {
       resetForm();
     }
-  }, [open, editResource, loadModules, initialSectionId, initialModuleId]);
+  }, [open, editResource, loadModules, loadFolders, initialSectionId, initialModuleId, initialFolderId]);
 
   useEffect(() => {
     if (selectedSection) {
@@ -91,6 +111,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
   const resetForm = () => {
     setSelectedSection('');
     setSelectedModule('none');
+    setSelectedFolder('none');
     setResourceName('');
     setUrl('');
     setContent('');
@@ -259,6 +280,27 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
     return urls;
   };
 
+  // 递归构建文件夹树选项
+  const buildFolderOptions = (
+    parentId: string | null = null, 
+    prefix: string = ''
+  ): JSX.Element[] => {
+    const children = folders.filter(f => f.parent_id === parentId);
+    const options: JSX.Element[] = [];
+
+    children.forEach(folder => {
+      options.push(
+        <SelectItem key={folder.id} value={folder.id}>
+          {prefix}{folder.name}
+        </SelectItem>
+      );
+      // 递归添加子文件夹
+      options.push(...buildFolderOptions(folder.id, prefix + '　'));
+    });
+
+    return options;
+  };
+
   const handleSubmit = async () => {
     if (!user) return;
 
@@ -335,6 +377,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         user_id: user.id,
         section_id: finalSectionId,
         module_id: selectedModule && selectedModule !== 'none' ? selectedModule : null,
+        folder_id: selectedFolder && selectedFolder !== 'none' ? selectedFolder : null,
         name: resourceName.trim(),
         url: finalUrl,
         content,
@@ -380,6 +423,28 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         </DialogHeader>
         
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="folder">所属文件夹（可选）</Label>
+            <Select 
+              value={selectedFolder} 
+              onValueChange={(val) => {
+                setSelectedFolder(val);
+                trackEvent('add_folder_select', { folderId: val });
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="选择文件夹" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">无</SelectItem>
+                {buildFolderOptions()}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              选择文件夹后，资源将按文件夹组织（新版功能）
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="section">所属板块 *</Label>
             <Select value={selectedSection} onValueChange={(val) => {

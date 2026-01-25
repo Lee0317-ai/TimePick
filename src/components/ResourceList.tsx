@@ -37,7 +37,10 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
       `)
       .eq('user_id', user.id);
 
-    if (selectedNode?.type === 'section') {
+    if (selectedNode?.type === 'folder') {
+      // 文件夹过滤
+      query = query.eq('folder_id', selectedNode.data.id);
+    } else if (selectedNode?.type === 'section') {
       query = query.eq('section_id', selectedNode.data.id);
       if (selectedNode.module) {
         query = query.eq('module_id', selectedNode.module.id);
@@ -79,6 +82,15 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh }: Resour
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbLink className="font-semibold">全部资源</BreadcrumbLink>
+              </BreadcrumbItem>
+            </>
+          ) : selectedNode.type === 'folder' ? (
+            <>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink className="font-semibold">
+                  {selectedNode.data.name}
+                </BreadcrumbLink>
               </BreadcrumbItem>
             </>
           ) : (
