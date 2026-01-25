@@ -150,6 +150,7 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: R
         return '/placeholder.svg';
       case 'image':
         return resource.url || '/placeholder.svg';
+      // 视频类型已隐藏，保留此处以兼容旧数据
       case 'video':
         return resource.thumbnail_url || '/placeholder.svg';
       default:

@@ -301,17 +301,19 @@ export default function Home() {
         </div>
         
         {/* 搜索栏 */}
-        <div className="px-4 pb-4 flex gap-2">
-          <Input
-            placeholder="搜索资源..."
-            value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          />
-          <Button onClick={handleSearch}>
-            <Search className="h-4 w-4 mr-2" />
-            搜索
-          </Button>
+        <div className="px-4 pb-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="搜索资源... (支持名称、标签、备注、URL)"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            <Button onClick={handleSearch}>
+              <Search className="h-4 w-4 mr-2" />
+              搜索
+            </Button>
+          </div>
         </div>
       </header>
 

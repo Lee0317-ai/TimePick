@@ -249,8 +249,24 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : subFolders.length === 0 && resources.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            {selectedNode?.type === 'folder' || selectedNode?.type === 'all' ? '暂无文件夹或资源' : '暂无资源'}
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <div className="text-muted-foreground space-y-2">
+              {selectedNode?.type === 'folder' || selectedNode?.type === 'all' ? (
+                <>
+                  <p className="text-lg font-medium">暂无文件夹或资源</p>
+                  <p className="text-sm">
+                    {selectedNode?.type === 'all' 
+                      ? '点击右下角按钮开始创建文件夹或添加资源' 
+                      : '在此文件夹中添加子文件夹或资源'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-medium">暂无资源</p>
+                  <p className="text-sm">点击右下角"+"按钮开始添加资源</p>
+                </>
+              )}
+            </div>
           </div>
         ) : (
           <div className="p-4 space-y-6">

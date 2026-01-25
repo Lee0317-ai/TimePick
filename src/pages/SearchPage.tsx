@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Search, Trash2, Plus } from 'lucide-react';
+import { ArrowLeft, Search, Trash2, Plus, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceCard } from '@/components/ResourceCard';
 import { Resource } from '@/types';
@@ -56,6 +56,7 @@ export default function SearchPage() {
     saveSearchHistory(kw);
     trackEvent('global_search_input', { keyword: kw });
 
+    // 增强搜索：支持标签、名称、备注、URL、内容
     const { data, error } = await supabase
       .from('resources')
       .select(`
@@ -63,8 +64,7 @@ export default function SearchPage() {
         sections:section_id(name, type),
         modules:module_id(name)
       `)
-      .eq('user_id', user.id)
-      .or(`name.ilike.%${kw}%,notes.ilike.%${kw}%,url.ilike.%${kw}%`);
+      .eq('user_id', user.id);
 
     setLoading(false);
 
@@ -73,19 +73,43 @@ export default function SearchPage() {
       return;
     }
 
-    setResults(data as Resource[] || []);
-    if (data && data.length > 0) {
-      trackEvent('search_result_expose', { count: data.length });
+    // 客户端过滤：支持标签数组搜索
+    const filteredResults = (data as Resource[] || []).filter(resource => {
+      const keyword = kw.toLowerCase();
+      
+      // 搜索名称
+      if (resource.name?.toLowerCase().includes(keyword)) return true;
+      
+      // 搜索备注
+      if (resource.notes?.toLowerCase().includes(keyword)) return true;
+      
+      // 搜索URL
+      if (resource.url?.toLowerCase().includes(keyword)) return true;
+      
+      // 搜索内容
+      if (resource.content?.toLowerCase().includes(keyword)) return true;
+      
+      // 搜索标签
+      if (resource.tags && resource.tags.length > 0) {
+        return resource.tags.some(tag => tag.toLowerCase().includes(keyword));
+      }
+      
+      return false;
+    });
+
+    setResults(filteredResults);
+    if (filteredResults.length > 0) {
+      trackEvent('search_result_expose', { count: filteredResults.length });
     }
 
     // 按板块分组
     const grouped: Record<string, Resource[]> = {};
-    data?.forEach(item => {
+    filteredResults.forEach(item => {
       const sectionName = item.sections?.name || '未分类';
       if (!grouped[sectionName]) {
         grouped[sectionName] = [];
       }
-      grouped[sectionName].push(item as Resource);
+      grouped[sectionName].push(item);
     });
     setGroupedResults(grouped);
   }, [user, saveSearchHistory]);
@@ -192,6 +216,9 @@ export default function SearchPage() {
               ) : results.length === 0 ? (
                 <Card className="p-12 text-center">
                   <p className="text-muted-foreground mb-4">未找到相关资源</p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    搜索范围：资源名称、标签、备注、URL、内容描述
+                  </p>
                   <Button onClick={() => navigate('/home')}>
                     <Plus className="h-4 w-4 mr-2" />
                     去录入
@@ -199,8 +226,13 @@ export default function SearchPage() {
                 </Card>
               ) : (
                 <div className="space-y-6">
-                  <div className="text-sm text-muted-foreground">
-                    找到 {results.length} 条结果
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Search className="h-4 w-4" />
+                    <span>找到 {results.length} 条结果</span>
+                    <Badge variant="outline" className="ml-2">
+                      <Tag className="h-3 w-3 mr-1" />
+                      支持标签搜索
+                    </Badge>
                   </div>
                   {Object.entries(groupedResults).map(([sectionName, items]) => (
                     <div key={sectionName}>

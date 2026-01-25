@@ -258,9 +258,8 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         let sectionType = '';
         if (fileType.startsWith('image/')) {
           sectionType = 'image';
-        } else if (fileType.startsWith('video/')) {
-          sectionType = 'video';
         } else {
+          // 视频上传已隐藏，默认为文档
           sectionType = 'document';
         }
         
@@ -401,13 +400,10 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
       // 确定板块（如果用户没有手动选择，则根据内容自动判断）
       let finalSectionId = selectedSection;
       if (!finalSectionId && finalUrl) {
-        // 根据 URL 判断类型
+        // 根据 URL 判断类型（视频上传已隐藏）
         if (finalUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
           const imageSection = sections.find(s => s.type === 'image');
           finalSectionId = imageSection?.id || selectedSection;
-        } else if (finalUrl.match(/\.(mp4|avi|mov|wmv)$/i)) {
-          const videoSection = sections.find(s => s.type === 'video');
-          finalSectionId = videoSection?.id || selectedSection;
         }
       }
 
@@ -494,11 +490,13 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
                 <SelectValue placeholder="选择板块" />
               </SelectTrigger>
               <SelectContent>
-                {sections.map(section => (
-                  <SelectItem key={section.id} value={section.id}>
-                    {section.name}
-                  </SelectItem>
-                ))}
+                {sections
+                  .filter(section => section.type !== 'video') // 隐藏视频板块
+                  .map(section => (
+                    <SelectItem key={section.id} value={section.id}>
+                      {section.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -595,7 +593,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
                     点击或拖拽文件到这里
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    支持文档、图片、视频等多种格式
+                    支持文档、图片等多种格式（视频上传功能暂时隐藏）
                   </p>
                 </label>
               </div>
