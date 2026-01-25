@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag, Lightbulb } from 'lucide-react';
+import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag, Lightbulb, Home as HomeIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceTree } from '@/components/ResourceTree';
 import { FolderTree } from '@/components/FolderTree';
@@ -17,6 +17,7 @@ import { ResourceDialog } from '@/components/ResourceDialog';
 import { WeatherWidget } from '@/components/WeatherWidget';
 import { TagCloud } from '@/components/TagCloud';
 import { InspirationDrawer } from '@/components/InspirationDrawer';
+import { ResizableSidebar } from '@/components/ResizableSidebar';
 import { TreeNode, Folder } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -319,70 +320,72 @@ export default function Home() {
 
       {/* 主内容区 */}
       <div className="flex-1 flex overflow-hidden">
-        {/* 左侧树形菜单 - 桌面端 */}
+        {/* 左侧树形菜单 - 桌面端 - 可调整宽度 */}
         {!isMobile && (
-          <aside className="w-64 border-r bg-card">
-            <div className="p-4 border-b flex items-center justify-between">
-              <div className="flex gap-2">
-                <Button
-                  variant={viewMode === 'folder' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setViewMode('folder');
-                    trackEvent('dimension_switch_click', { mode: 'folder' });
-                  }}
-                  title="文件夹"
-                >
-                  <FolderTreeIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'section' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setViewMode('section');
-                    trackEvent('dimension_switch_click', { mode: 'section' });
-                  }}
-                  title="板块"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'module' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setViewMode('module');
-                    trackEvent('dimension_switch_click', { mode: 'module' });
-                  }}
-                  title="模块"
-                >
-                  <LayoutList className="h-4 w-4" />
-                </Button>
+          <ResizableSidebar defaultWidth={280} minWidth={200} maxWidth={500} className="h-full">
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b flex items-center justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    variant={viewMode === 'folder' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setViewMode('folder');
+                      trackEvent('dimension_switch_click', { mode: 'folder' });
+                    }}
+                    title="文件夹"
+                  >
+                    <FolderTreeIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'section' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setViewMode('section');
+                      trackEvent('dimension_switch_click', { mode: 'section' });
+                    }}
+                    title="板块"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'module' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setViewMode('module');
+                      trackEvent('dimension_switch_click', { mode: 'module' });
+                    }}
+                    title="模块"
+                  >
+                    <LayoutList className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
+              <ScrollArea className="h-[calc(100vh-200px)]">
+                {viewMode === 'folder' ? (
+                  <FolderTree
+                    onNodeSelect={handleNodeSelect}
+                    onAddFolder={handleAddFolder}
+                    onEditFolder={handleEditFolder}
+                    onAddResource={() => setShowResourceDialog(true)}
+                    refreshTrigger={refreshTrigger}
+                    isCollector={currentRole === 'collector'}
+                    onResourceMove={handleRefresh}
+                  />
+                ) : (
+                  <ResourceTree
+                    viewMode={viewMode as 'section' | 'module'}
+                    onNodeSelect={handleNodeSelect}
+                    onAddModule={() => setShowModuleDialog(true)}
+                    onAddResource={() => setShowResourceDialog(true)}
+                    refreshTrigger={refreshTrigger}
+                    isCollector={currentRole === 'collector'}
+                    onResourceMove={handleRefresh}
+                  />
+                )}
+              </ScrollArea>
             </div>
-            <ScrollArea className="h-[calc(100vh-200px)]">
-              {viewMode === 'folder' ? (
-                <FolderTree
-                  onNodeSelect={handleNodeSelect}
-                  onAddFolder={handleAddFolder}
-                  onEditFolder={handleEditFolder}
-                  onAddResource={() => setShowResourceDialog(true)}
-                  refreshTrigger={refreshTrigger}
-                  isCollector={currentRole === 'collector'}
-                  onResourceMove={handleRefresh}
-                />
-              ) : (
-                <ResourceTree
-                  viewMode={viewMode as 'section' | 'module'}
-                  onNodeSelect={handleNodeSelect}
-                  onAddModule={() => setShowModuleDialog(true)}
-                  onAddResource={() => setShowResourceDialog(true)}
-                  refreshTrigger={refreshTrigger}
-                  isCollector={currentRole === 'collector'}
-                  onResourceMove={handleRefresh}
-                />
-              )}
-            </ScrollArea>
-          </aside>
+          </ResizableSidebar>
         )}
 
         {/* 中间资源列表 */}
@@ -398,11 +401,11 @@ export default function Home() {
         </main>
       </div>
 
-      {/* 悬浮录入按钮 */}
-      {currentRole === 'collector' && (
+      {/* 悬浮录入按钮 - 桌面端 */}
+      {currentRole === 'collector' && !isMobile && (
         <>
           <Button
-            className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg"
+            className="fixed bottom-8 right-8 h-14 w-14 rounded-full shadow-lg z-50"
             size="icon"
             onClick={() => {
               setShowResourceDialog(true);
@@ -415,7 +418,7 @@ export default function Home() {
           {/* 新建文件夹按钮（仅在文件夹视图时显示） */}
           {viewMode === 'folder' && (
             <Button
-              className="fixed bottom-24 right-8 h-12 w-12 rounded-full shadow-lg"
+              className="fixed bottom-24 right-8 h-12 w-12 rounded-full shadow-lg z-50"
               size="icon"
               variant="secondary"
               onClick={() => {
@@ -428,6 +431,62 @@ export default function Home() {
             </Button>
           )}
         </>
+      )}
+
+      {/* 移动端底部导航 */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t z-50 pb-safe">
+          <div className="flex items-center justify-around px-2 py-3">
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2 px-4"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <FolderTreeIcon className="h-5 w-5" />
+              <span className="text-xs">分类</span>
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2 px-4"
+              onClick={() => navigate('/search')}
+            >
+              <Search className="h-5 w-5" />
+              <span className="text-xs">搜索</span>
+            </Button>
+
+            {currentRole === 'collector' && (
+              <Button
+                className="h-14 w-14 rounded-full shadow-lg -mt-8"
+                size="icon"
+                onClick={() => {
+                  setShowResourceDialog(true);
+                  trackEvent('home_entry_click');
+                }}
+              >
+                <Plus className="h-6 w-6" />
+              </Button>
+            )}
+            
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2 px-4"
+              onClick={() => setShowInspirationDrawer(true)}
+            >
+              <Lightbulb className="h-5 w-5" />
+              <span className="text-xs">灵感</span>
+            </Button>
+            
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2 px-4"
+              onClick={() => navigate('/profile')}
+            >
+              <User className="h-5 w-5" />
+              <span className="text-xs">我的</span>
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* 对话框 */}
