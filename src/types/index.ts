@@ -20,6 +20,7 @@ export interface Resource {
   user_id: string;
   section_id: string;
   module_id: string | null;
+  folder_id: string | null;
   parent_id: string | null;
   name: string;
   url: string | null;
@@ -28,6 +29,7 @@ export interface Resource {
   file_size: number;
   thumbnail_url: string | null;
   notes: string | null;
+  tags: string[] | null;
   created_at: string;
   updated_at: string;
   sections?: Section;

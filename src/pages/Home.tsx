@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon } from 'lucide-react';
+import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceTree } from '@/components/ResourceTree';
 import { FolderTree } from '@/components/FolderTree';
@@ -15,6 +15,7 @@ import { ModuleDialog } from '@/components/ModuleDialog';
 import { FolderDialog } from '@/components/FolderDialog';
 import { ResourceDialog } from '@/components/ResourceDialog';
 import { WeatherWidget } from '@/components/WeatherWidget';
+import { TagCloud } from '@/components/TagCloud';
 import { TreeNode, Folder } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -37,6 +38,8 @@ export default function Home() {
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showVersionDialog, setShowVersionDialog] = useState(false);
+  const [showTagCloud, setShowTagCloud] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   useEffect(() => {
     document.title = '首页 - 拾光';
@@ -129,6 +132,18 @@ export default function Home() {
     setShowFolderDialog(false);
     setEditingFolder(undefined);
     setParentFolderId(undefined);
+  };
+
+  const handleTagSelect = (tag: string) => {
+    setSelectedTags([...selectedTags, tag]);
+  };
+
+  const handleTagRemove = (tag: string) => {
+    setSelectedTags(selectedTags.filter(t => t !== tag));
+  };
+
+  const handleClearAllTags = () => {
+    setSelectedTags([]);
   };
 
   return (
@@ -229,6 +244,23 @@ export default function Home() {
             >
               <Sparkles className="h-4 w-4" />
               <span>算运势</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-2"
+              onClick={() => {
+                setShowTagCloud(true);
+                trackEvent('tag_cloud_open');
+              }}
+            >
+              <Tag className="h-4 w-4" />
+              <span>标签</span>
+              {selectedTags.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary text-primary-foreground rounded-full">
+                  {selectedTags.length}
+                </span>
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -345,6 +377,7 @@ export default function Home() {
             onRefresh={handleRefresh}
             onNodeSelect={handleNodeSelect}
             onEditFolder={handleEditFolder}
+            selectedTags={selectedTags}
           />
         </main>
       </div>
@@ -418,6 +451,26 @@ export default function Home() {
               loading="lazy"
             />
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 标签云对话框 */}
+      <Dialog open={showTagCloud} onOpenChange={setShowTagCloud}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tag className="h-5 w-5" />
+              标签筛选
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            <TagCloud
+              selectedTags={selectedTags}
+              onTagSelect={handleTagSelect}
+              onTagRemove={handleTagRemove}
+              onClearAll={handleClearAllTags}
+            />
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

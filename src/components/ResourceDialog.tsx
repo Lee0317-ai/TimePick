@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Upload, X, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Upload, X, Sparkles, Tag, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Section, Module, Resource, Folder } from '@/types';
 import { trackEvent } from '@/lib/analytics';
@@ -36,6 +37,8 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
   const [url, setUrl] = useState('');
   const [content, setContent] = useState('');
   const [notes, setNotes] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
@@ -86,6 +89,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         setUrl(editResource.url || '');
         setContent(editResource.content || '');
         setNotes(editResource.notes || '');
+        setTags(editResource.tags || []);
       } else {
         trackEvent('resource_add_expose');
         if (initialSectionId) setSelectedSection(initialSectionId);
@@ -116,8 +120,42 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
     setUrl('');
     setContent('');
     setNotes('');
+    setTags([]);
+    setTagInput('');
     setFiles([]);
     setRecognizedImageUrl('');
+  };
+
+  // 标签管理函数
+  const handleAddTag = () => {
+    const trimmedTag = tagInput.trim();
+    if (!trimmedTag) {
+      toast.error('标签不能为空');
+      return;
+    }
+    if (tags.includes(trimmedTag)) {
+      toast.error('标签已存在');
+      return;
+    }
+    if (tags.length >= 10) {
+      toast.error('最多添加10个标签');
+      return;
+    }
+    setTags([...tags, trimmedTag]);
+    setTagInput('');
+    trackEvent('tag_add', { tag: trimmedTag });
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+    trackEvent('tag_remove', { tag: tagToRemove });
+  };
+
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
   };
 
   // 自动识别网址
@@ -382,6 +420,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         url: finalUrl,
         content,
         notes,
+        tags: tags.length > 0 ? tags : null,
         file_size: files.length > 0 ? files[0].size : 0,
         ...(thumbnailUrl && { thumbnail_url: thumbnailUrl }),
       };
@@ -581,6 +620,63 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
               )}
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label htmlFor="tags" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              标签
+            </Label>
+            <div className="space-y-3">
+              {/* 标签输入 */}
+              <div className="flex gap-2">
+                <Input
+                  id="tags"
+                  placeholder="输入标签并按回车"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagInputKeyDown}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddTag}
+                  disabled={!tagInput.trim()}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  添加
+                </Button>
+              </div>
+              
+              {/* 已添加的标签 */}
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-md">
+                  {tags.map((tag) => (
+                    <Badge 
+                      key={tag} 
+                      variant="secondary"
+                      className="px-3 py-1 flex items-center gap-1 hover:bg-secondary/80"
+                    >
+                      <Tag className="h-3 w-3" />
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              
+              <p className="text-xs text-muted-foreground">
+                {tags.length > 0 ? `已添加 ${tags.length}/10 个标签` : '标签可帮助您更好地组织和查找资源'}
+              </p>
+            </div>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="notes">备注</Label>

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,7 +12,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { ResourceCard } from './ResourceCard';
 import { SubFolderCard } from './SubFolderCard';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Tag } from 'lucide-react';
 import { Resource, TreeNode, Folder } from '@/types';
 
 interface ResourceListProps {
@@ -20,9 +21,10 @@ interface ResourceListProps {
   onRefresh: () => void;
   onNodeSelect?: (node: TreeNode) => void;
   onEditFolder?: (folder: Folder) => void;
+  selectedTags?: string[];
 }
 
-export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSelect, onEditFolder }: ResourceListProps) {
+export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSelect, onEditFolder, selectedTags = [] }: ResourceListProps) {
   const { user } = useAuth();
   const [resources, setResources] = useState<Resource[]>([]);
   const [subFolders, setSubFolders] = useState<Folder[]>([]);
@@ -94,9 +96,20 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
     setLoading(false);
 
     if (!error && data) {
-      setResources(data as Resource[]);
+      let filteredResources = data as Resource[];
+      
+      // 应用标签过滤
+      if (selectedTags && selectedTags.length > 0) {
+        filteredResources = filteredResources.filter(resource => {
+          if (!resource.tags || resource.tags.length === 0) return false;
+          // 检查资源是否包含所有选中的标签
+          return selectedTags.every(selectedTag => resource.tags?.includes(selectedTag));
+        });
+      }
+      
+      setResources(filteredResources);
     }
-  }, [user, selectedNode]);
+  }, [user, selectedNode, selectedTags]);
 
   // 加载文件夹路径（用于面包屑）
   const loadFolderPath = async (folderId: string) => {
@@ -210,8 +223,24 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
 
   return (
     <div className="h-full flex flex-col">
-      <div className="border-b p-4">
+      <div className="border-b p-4 space-y-3">
         {renderBreadcrumb()}
+        
+        {/* 标签过滤提示 */}
+        {selectedTags && selectedTags.length > 0 && (
+          <div className="flex items-center gap-2 text-sm">
+            <Tag className="h-3.5 w-3.5 text-primary" />
+            <span className="text-muted-foreground">已筛选标签：</span>
+            <div className="flex flex-wrap gap-1">
+              {selectedTags.map(tag => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+            <span className="text-muted-foreground">({resources.length} 个结果)</span>
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1">

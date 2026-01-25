@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import { Eye, Edit, Trash2, Sparkles, Loader2, Tag } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ResourcePreview } from './ResourcePreview';
@@ -193,6 +193,24 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView }: R
               {resource.modules.name}
             </Badge>
           )}
+          
+          {/* 显示标签 */}
+          {resource.tags && resource.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {resource.tags.slice(0, 3).map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-xs flex items-center gap-1">
+                  <Tag className="h-2.5 w-2.5" />
+                  {tag}
+                </Badge>
+              ))}
+              {resource.tags.length > 3 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{resource.tags.length - 3}
+                </Badge>
+              )}
+            </div>
+          )}
+          
           {/* 显示简介（content） */}
           {resource.content && (
             <p
