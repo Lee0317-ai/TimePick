@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          created_at: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      folders: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          sort_order: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspirations: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          location: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          location?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          location?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       module_sections: {
         Row: {
           id: string
@@ -104,12 +193,14 @@ export type Database = {
           created_at: string | null
           file_size: number | null
           file_type: string | null
+          folder_id: string | null
           id: string
           module_id: string | null
           name: string
           notes: string | null
           parent_id: string | null
           section_id: string
+          tags: string[] | null
           thumbnail_url: string | null
           updated_at: string | null
           url: string | null
@@ -120,12 +211,14 @@ export type Database = {
           created_at?: string | null
           file_size?: number | null
           file_type?: string | null
+          folder_id?: string | null
           id?: string
           module_id?: string | null
           name: string
           notes?: string | null
           parent_id?: string | null
           section_id: string
+          tags?: string[] | null
           thumbnail_url?: string | null
           updated_at?: string | null
           url?: string | null
@@ -136,18 +229,27 @@ export type Database = {
           created_at?: string | null
           file_size?: number | null
           file_type?: string | null
+          folder_id?: string | null
           id?: string
           module_id?: string | null
           name?: string
           notes?: string | null
           parent_id?: string | null
           section_id?: string
+          tags?: string[] | null
           thumbnail_url?: string | null
           updated_at?: string | null
           url?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "resources_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "resources_module_id_fkey"
             columns: ["module_id"]

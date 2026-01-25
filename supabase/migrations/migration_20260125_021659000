@@ -1,0 +1,149 @@
+-- ============================================
+-- 拾光资源系统 2.0 数据库迁移
+-- ============================================
+
+-- 1. 创建 folders 表（文件夹）
+CREATE TABLE IF NOT EXISTS folders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  parent_id UUID REFERENCES folders(id) ON DELETE CASCADE,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- folders 表索引
+CREATE INDEX IF NOT EXISTS idx_folders_user_id ON folders(user_id);
+CREATE INDEX IF NOT EXISTS idx_folders_parent_id ON folders(parent_id);
+CREATE INDEX IF NOT EXISTS idx_folders_name ON folders(name);
+
+-- folders 表 RLS 策略
+ALTER TABLE folders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own folders" ON folders;
+CREATE POLICY "Users can manage own folders" ON folders
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 2. 创建 inspirations 表（灵感记录）
+CREATE TABLE IF NOT EXISTS inspirations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  location TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- inspirations 表索引
+CREATE INDEX IF NOT EXISTS idx_inspirations_user_id ON inspirations(user_id);
+CREATE INDEX IF NOT EXISTS idx_inspirations_created_at ON inspirations(created_at DESC);
+
+-- inspirations 表 RLS 策略
+ALTER TABLE inspirations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own inspirations" ON inspirations;
+CREATE POLICY "Users can manage own inspirations" ON inspirations
+  FOR ALL USING (auth.uid() = user_id);
+
+-- 3. 修改 resources 表结构
+-- 添加新字段
+ALTER TABLE resources
+ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES folders(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
+
+-- 创建新索引
+CREATE INDEX IF NOT EXISTS idx_resources_folder_id ON resources(folder_id);
+CREATE INDEX IF NOT EXISTS idx_resources_tags ON resources USING GIN(tags);
+
+-- 4. 数据迁移函数
+CREATE OR REPLACE FUNCTION migrate_sections_to_folders()
+RETURNS void AS $$
+DECLARE
+  section_record RECORD;
+  module_record RECORD;
+  user_record RECORD;
+  new_folder_id UUID;
+  new_sub_folder_id UUID;
+BEGIN
+  -- 遍历所有 section（作为根文件夹）
+  FOR section_record IN SELECT * FROM sections ORDER BY sort_order LOOP
+    -- 为每个使用该 section 的用户创建对应的根文件夹
+    FOR user_record IN 
+      SELECT DISTINCT user_id FROM resources WHERE section_id = section_record.id
+    LOOP
+      -- 创建根文件夹
+      INSERT INTO folders (user_id, name, parent_id, sort_order)
+      VALUES (user_record.user_id, section_record.name, NULL, section_record.sort_order)
+      ON CONFLICT DO NOTHING
+      RETURNING id INTO new_folder_id;
+      
+      -- 如果插入失败（已存在），查询现有的
+      IF new_folder_id IS NULL THEN
+        SELECT id INTO new_folder_id
+        FROM folders
+        WHERE user_id = user_record.user_id
+          AND name = section_record.name
+          AND parent_id IS NULL
+        LIMIT 1;
+      END IF;
+      
+      -- 更新该 section 下没有 module 的资源
+      UPDATE resources
+      SET folder_id = new_folder_id
+      WHERE section_id = section_record.id
+        AND module_id IS NULL
+        AND user_id = user_record.user_id;
+    END LOOP;
+    
+    -- 遍历该 section 下的所有 module（作为子文件夹）
+    FOR module_record IN 
+      SELECT m.* FROM modules m
+      JOIN module_sections ms ON m.id = ms.module_id
+      WHERE ms.section_id = section_record.id
+      ORDER BY m.sort_order
+    LOOP
+      -- 获取该 module 所属用户的根文件夹 ID
+      SELECT f.id INTO new_folder_id
+      FROM folders f
+      WHERE f.user_id = module_record.user_id
+        AND f.name = section_record.name
+        AND f.parent_id IS NULL
+      LIMIT 1;
+      
+      IF new_folder_id IS NOT NULL THEN
+        -- 创建子文件夹
+        INSERT INTO folders (user_id, name, parent_id, sort_order)
+        VALUES (module_record.user_id, module_record.name, new_folder_id, module_record.sort_order)
+        ON CONFLICT DO NOTHING
+        RETURNING id INTO new_sub_folder_id;
+        
+        -- 如果插入失败（已存在），查询现有的
+        IF new_sub_folder_id IS NULL THEN
+          SELECT id INTO new_sub_folder_id
+          FROM folders
+          WHERE user_id = module_record.user_id
+            AND name = module_record.name
+            AND parent_id = new_folder_id
+          LIMIT 1;
+        END IF;
+        
+        -- 更新该 module 下的资源
+        UPDATE resources
+        SET folder_id = new_sub_folder_id
+        WHERE module_id = module_record.id
+          AND user_id = module_record.user_id;
+      END IF;
+    END LOOP;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 5. 执行数据迁移
+SELECT migrate_sections_to_folders();
+
+-- 6. 清理函数
+DROP FUNCTION IF EXISTS migrate_sections_to_folders();
+
+-- 注意：暂时保留 section_id, module_id, parent_id 字段，便于回滚
+-- 后续确认无误后可以删除这些字段
