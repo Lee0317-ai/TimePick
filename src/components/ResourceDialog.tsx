@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Upload, X, Sparkles, Tag, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { Section, Module, Resource, Folder } from '@/types';
+import { Section, Module, Resource, Folder, ResourceInitData } from '@/types';
 import { trackEvent } from '@/lib/analytics';
 
 interface ResourceDialogProps {
@@ -21,9 +21,10 @@ interface ResourceDialogProps {
   initialSectionId?: string;
   initialModuleId?: string;
   initialFolderId?: string;
+  initialData?: ResourceInitData;
 }
 
-export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, initialSectionId, initialModuleId, initialFolderId }: ResourceDialogProps) {
+export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, initialSectionId, initialModuleId, initialFolderId, initialData }: ResourceDialogProps) {
   const { user } = useAuth();
   const [sections, setSections] = useState<Section[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -43,6 +44,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
   const [isLoading, setIsLoading] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [recognizedImageUrl, setRecognizedImageUrl] = useState('');
+  const [inspirationId, setInspirationId] = useState<string | null>(null);
 
   const loadModules = useCallback(async () => {
     if (!user) return;
@@ -95,6 +97,14 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         if (initialSectionId) setSelectedSection(initialSectionId);
         if (initialModuleId) setSelectedModule(initialModuleId);
         if (initialFolderId) setSelectedFolder(initialFolderId);
+        if (initialData) {
+          setResourceName(initialData.name);
+          setNotes(initialData.notes || '');
+          setInspirationId(initialData.inspirationId || null);
+          if (initialData.location) {
+            setNotes((prev) => prev + (prev ? '\n\n' : '') + `📍 位置：${initialData.location}`);
+          }
+        }
       }
     } else {
       resetForm();
@@ -417,6 +427,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         content,
         notes,
         tags: tags.length > 0 ? tags : null,
+        source_inspiration_id: inspirationId || null,
         file_size: files.length > 0 ? files[0].size : 0,
         ...(thumbnailUrl && { thumbnail_url: thumbnailUrl }),
       };
