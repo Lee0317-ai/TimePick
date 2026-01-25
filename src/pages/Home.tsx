@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag } from 'lucide-react';
+import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceTree } from '@/components/ResourceTree';
 import { FolderTree } from '@/components/FolderTree';
@@ -16,6 +16,7 @@ import { FolderDialog } from '@/components/FolderDialog';
 import { ResourceDialog } from '@/components/ResourceDialog';
 import { WeatherWidget } from '@/components/WeatherWidget';
 import { TagCloud } from '@/components/TagCloud';
+import { InspirationDrawer } from '@/components/InspirationDrawer';
 import { TreeNode, Folder } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -40,6 +41,7 @@ export default function Home() {
   const [showVersionDialog, setShowVersionDialog] = useState(false);
   const [showTagCloud, setShowTagCloud] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showInspirationDrawer, setShowInspirationDrawer] = useState(false);
 
   useEffect(() => {
     document.title = '首页 - 拾光';
@@ -244,6 +246,18 @@ export default function Home() {
             >
               <Sparkles className="h-4 w-4" />
               <span>算运势</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+              onClick={() => {
+                setShowInspirationDrawer(true);
+                trackEvent('inspiration_open');
+              }}
+            >
+              <Lightbulb className="h-4 w-4" />
+              <span>灵感</span>
             </Button>
             <Button
               variant="ghost"
@@ -473,6 +487,12 @@ export default function Home() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* 灵感记录抽屉 */}
+      <InspirationDrawer
+        open={showInspirationDrawer}
+        onOpenChange={setShowInspirationDrawer}
+      />
     </div>
   );
 }

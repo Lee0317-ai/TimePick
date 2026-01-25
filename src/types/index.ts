@@ -55,6 +55,15 @@ export interface Folder {
   updated_at: string;
 }
 
+export interface Inspiration {
+  id: string;
+  user_id: string;
+  content: string;
+  location: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TreeNode {
   type: 'section' | 'module' | 'all' | 'folder';
   data: Section | Module | Folder | { id: string; name: string };
