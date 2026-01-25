@@ -277,7 +277,7 @@ export default function Home() {
               <Sparkles className="h-4 w-4" />
               <span>算运势</span>
             </Button>
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
@@ -288,8 +288,8 @@ export default function Home() {
             >
               <Lightbulb className="h-4 w-4" />
               <span>灵感</span>
-            </Button>
-            <Button
+            </Button> */}
+            {/* <Button
               variant="ghost"
               size="sm"
               className="flex items-center gap-2"
@@ -305,7 +305,7 @@ export default function Home() {
                   {selectedTags.length}
                 </span>
               )}
-            </Button>
+            </Button> */}
             <Button
               variant="ghost"
               size="sm"
