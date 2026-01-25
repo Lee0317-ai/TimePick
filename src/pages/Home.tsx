@@ -129,6 +129,19 @@ export default function Home() {
     setShowFolderDialog(true);
   };
 
+  const handleConvertToResource = (data: ResourceInitData) => {
+    setResourceInitData(data);
+    setShowResourceDialog(true);
+    setShowInspirationDrawer(false);
+  };
+
+  const handleResourceDialogClose = (open: boolean) => {
+    setShowResourceDialog(open);
+    if (!open) {
+      setResourceInitData(undefined);
+    }
+  };
+
   const handleFolderDialogClose = () => {
     setShowFolderDialog(false);
     setEditingFolder(undefined);
@@ -178,6 +191,17 @@ export default function Home() {
                           <FolderTreeIcon className="h-4 w-4" />
                         </Button>
                         <Button
+                          variant={viewMode === 'tags' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => {
+                            setViewMode('tags');
+                            trackEvent('dimension_switch_click', { mode: 'tags' });
+                          }}
+                          title="标签"
+                        >
+                          <Tag className="h-4 w-4" />
+                        </Button>
+                        <Button
                           variant={viewMode === 'section' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => {
@@ -211,6 +235,12 @@ export default function Home() {
                           refreshTrigger={refreshTrigger}
                           isCollector={currentRole === 'collector'}
                           onResourceMove={handleRefresh}
+                        />
+                      ) : viewMode === 'tags' ? (
+                        <TagTree
+                          selectedTags={selectedTags}
+                          onTagSelect={setSelectedTags}
+                          onNodeSelect={handleNodeSelect}
                         />
                       ) : (
                         <ResourceTree
@@ -504,11 +534,18 @@ export default function Home() {
       />
       <ResourceDialog
         open={showResourceDialog}
-        onOpenChange={setShowResourceDialog}
+        onOpenChange={handleResourceDialogClose}
         onSuccess={handleRefresh}
         initialSectionId={selectedNode?.type === 'section' ? selectedNode.data.id : selectedNode?.section?.id}
         initialModuleId={selectedNode?.type === 'module' ? selectedNode.data.id : undefined}
         initialFolderId={selectedNode?.type === 'folder' ? selectedNode.data.id : undefined}
+        initialData={resourceInitData}
+      />
+
+      <InspirationDrawer
+        open={showInspirationDrawer}
+        onOpenChange={setShowInspirationDrawer}
+        onConvertToResource={handleConvertToResource}
       />
 
       {/* 版本更新对话框 */}
