@@ -30,6 +30,7 @@ export interface Resource {
   thumbnail_url: string | null;
   notes: string | null;
   tags: string[] | null;
+  source_inspiration_id: string | null;
   created_at: string;
   updated_at: string;
   sections?: Section;
@@ -60,14 +61,41 @@ export interface Inspiration {
   user_id: string;
   content: string;
   location: string | null;
+  status: 'active' | 'converted' | 'archived';
+  converted_to_resource_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface TreeNode {
-  type: 'section' | 'module' | 'all' | 'folder';
-  data: Section | Module | Folder | { id: string; name: string };
+  type: 'section' | 'module' | 'all' | 'folder' | 'tags';
+  data: Section | Module | Folder | { id: string; name: string; tags?: string[] };
   section?: Section;
   module?: Module;
   folder?: Folder;
+}
+
+export type ViewType = 'grid' | 'list' | 'thumbnail';
+
+export interface TagGroup {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TagStat {
+  tag: string;
+  count: number;
+  group?: TagGroup;
+}
+
+export interface ResourceInitData {
+  name: string;
+  notes?: string;
+  location?: string | null;
+  inspirationId?: string;
 }

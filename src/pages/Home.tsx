@@ -10,6 +10,7 @@ import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText, F
 import { toast } from 'sonner';
 import { ResourceTree } from '@/components/ResourceTree';
 import { FolderTree } from '@/components/FolderTree';
+import { TagTree } from '@/components/TagTree';
 import { ResourceList } from '@/components/ResourceList';
 import { ModuleDialog } from '@/components/ModuleDialog';
 import { FolderDialog } from '@/components/FolderDialog';
@@ -18,7 +19,7 @@ import { WeatherWidget } from '@/components/WeatherWidget';
 import { TagCloud } from '@/components/TagCloud';
 import { InspirationDrawer } from '@/components/InspirationDrawer';
 import { ResizableSidebar } from '@/components/ResizableSidebar';
-import { TreeNode, Folder } from '@/types';
+import { TreeNode, Folder, ResourceInitData } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -30,7 +31,7 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<'collector' | 'searcher'>('collector');
-  const [viewMode, setViewMode] = useState<'section' | 'module' | 'folder'>('folder');
+  const [viewMode, setViewMode] = useState<'section' | 'module' | 'folder' | 'tags'>('folder');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [showModuleDialog, setShowModuleDialog] = useState(false);
@@ -38,6 +39,7 @@ export default function Home() {
   const [editingFolder, setEditingFolder] = useState<Folder | undefined>(undefined);
   const [parentFolderId, setParentFolderId] = useState<string | undefined>(undefined);
   const [showResourceDialog, setShowResourceDialog] = useState(false);
+  const [resourceInitData, setResourceInitData] = useState<ResourceInitData | undefined>(undefined);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showVersionDialog, setShowVersionDialog] = useState(false);
   const [showTagCloud, setShowTagCloud] = useState(false);
@@ -47,7 +49,7 @@ export default function Home() {
   useEffect(() => {
     document.title = '首页 - 拾光';
     trackEvent('home_page_expose');
-    // 检查是否已选择角色
+    // 角色检查逻辑保留但隐藏UI，默认设为collector
     const checkRole = async () => {
       if (!user) return;
 
@@ -57,18 +59,14 @@ export default function Home() {
         return;
       }
 
-      const { data } = await supabase
+      // 默认设置为collector，跳过角色选择
+      localStorage.setItem('userRole', 'collector');
+      setCurrentRole('collector');
+      
+      // 同步到数据库
+      await supabase
         .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (data?.role) {
-        localStorage.setItem('userRole', data.role);
-        setCurrentRole(data.role as 'collector' | 'searcher');
-      } else {
-        navigate('/role-select');
-      }
+        .upsert({ user_id: user.id, role: 'collector' }, { onConflict: 'user_id' });
     };
 
     checkRole();
@@ -231,12 +229,13 @@ export default function Home() {
               </Sheet>
             )}
             <h1 className="text-2xl font-bold">拾光</h1>
-            <Tabs value={currentRole} onValueChange={handleRoleChange}>
+            {/* 角色切换已隐藏，保留代码便于未来恢复 */}
+            {/* <Tabs value={currentRole} onValueChange={handleRoleChange}>
               <TabsList>
                 <TabsTrigger value="collector">收集者</TabsTrigger>
                 <TabsTrigger value="searcher">查询者</TabsTrigger>
               </TabsList>
-            </Tabs>
+            </Tabs> */}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -449,32 +448,33 @@ export default function Home() {
             <Button
               variant="ghost"
               className="flex flex-col items-center gap-1 h-auto py-2 px-4"
-              onClick={() => navigate('/search')}
+              onClick={() => {
+                setShowInspirationDrawer(true);
+                trackEvent('inspiration_open');
+              }}
             >
-              <Search className="h-5 w-5" />
-              <span className="text-xs">搜索</span>
+              <Lightbulb className="h-5 w-5" />
+              <span className="text-xs">灵感</span>
             </Button>
 
-            {currentRole === 'collector' && (
-              <Button
-                className="h-14 w-14 rounded-full shadow-lg -mt-8"
-                size="icon"
-                onClick={() => {
-                  setShowResourceDialog(true);
-                  trackEvent('home_entry_click');
-                }}
-              >
-                <Plus className="h-6 w-6" />
-              </Button>
-            )}
+            <Button
+              className="h-14 w-14 rounded-full shadow-lg -mt-8"
+              size="icon"
+              onClick={() => {
+                setShowResourceDialog(true);
+                trackEvent('home_entry_click');
+              }}
+            >
+              <Plus className="h-6 w-6" />
+            </Button>
             
             <Button
               variant="ghost"
               className="flex flex-col items-center gap-1 h-auto py-2 px-4"
-              onClick={() => setShowInspirationDrawer(true)}
+              onClick={() => navigate('/search')}
             >
-              <Lightbulb className="h-5 w-5" />
-              <span className="text-xs">灵感</span>
+              <Search className="h-5 w-5" />
+              <span className="text-xs">搜索</span>
             </Button>
             
             <Button

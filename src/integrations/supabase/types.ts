@@ -79,29 +79,43 @@ export type Database = {
       inspirations: {
         Row: {
           content: string
+          converted_to_resource_id: string | null
           created_at: string | null
           id: string
           location: string | null
+          status: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           content: string
+          converted_to_resource_id?: string | null
           created_at?: string | null
           id?: string
           location?: string | null
+          status?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           content?: string
+          converted_to_resource_id?: string | null
           created_at?: string | null
           id?: string
           location?: string | null
+          status?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inspirations_converted_to_resource_id_fkey"
+            columns: ["converted_to_resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       module_sections: {
         Row: {
@@ -200,6 +214,7 @@ export type Database = {
           notes: string | null
           parent_id: string | null
           section_id: string
+          source_inspiration_id: string | null
           tags: string[] | null
           thumbnail_url: string | null
           updated_at: string | null
@@ -218,6 +233,7 @@ export type Database = {
           notes?: string | null
           parent_id?: string | null
           section_id: string
+          source_inspiration_id?: string | null
           tags?: string[] | null
           thumbnail_url?: string | null
           updated_at?: string | null
@@ -236,6 +252,7 @@ export type Database = {
           notes?: string | null
           parent_id?: string | null
           section_id?: string
+          source_inspiration_id?: string | null
           tags?: string[] | null
           thumbnail_url?: string | null
           updated_at?: string | null
@@ -269,6 +286,13 @@ export type Database = {
             columns: ["section_id"]
             isOneToOne: false
             referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resources_source_inspiration_id_fkey"
+            columns: ["source_inspiration_id"]
+            isOneToOne: false
+            referencedRelation: "inspirations"
             referencedColumns: ["id"]
           },
         ]
@@ -318,6 +342,36 @@ export type Database = {
         }
         Relationships: []
       }
+      tag_groups: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -347,6 +401,25 @@ export type Database = {
       check_username_exists: {
         Args: { username_input: string }
         Returns: boolean
+      }
+      delete_tag: {
+        Args: { tag_name: string; user_uuid: string }
+        Returns: number
+      }
+      get_folder_resource_count: {
+        Args: { folder_uuid: string }
+        Returns: number
+      }
+      get_user_tag_stats: {
+        Args: { user_uuid: string }
+        Returns: {
+          tag: string
+          usage_count: number
+        }[]
+      }
+      rename_tag: {
+        Args: { new_tag_name: string; old_tag_name: string; user_uuid: string }
+        Returns: number
       }
     }
     Enums: {
