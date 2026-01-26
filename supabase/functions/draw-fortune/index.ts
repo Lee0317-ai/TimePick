@@ -18,18 +18,60 @@ serve(async (req) => {
     // 获取请求体
     const { userId, birthDate } = await req.json();
     
-    if (!birthDate) {
+    if (!userId || !birthDate) {
       return new Response(
         JSON.stringify({ 
-          error: 'birth_date_required',
-          message: '请先设置您的出生日期',
+          error: 'userId and birthDate are required',
           success: false
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('User ID:', userId);
     console.log('Birth date:', birthDate);
+
+    // 创建Supabase客户端（用于数据库操作）
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
+
+    // 获取今天的日期
+    const today = new Date().toISOString().split('T')[0];
+    console.log('Today:', today);
+
+    // 检查今天是否已经抽过签
+    console.log('Checking existing draw...');
+    const { data: existingDraw, error: checkError } = await supabase
+      .from('fortune_draws')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('draw_date', today)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Check error:', checkError);
+    }
+
+    // 如果已经抽过签且出生日期未改变，返回缓存结果
+    if (existingDraw && existingDraw.birth_date === birthDate) {
+      console.log('Returning cached draw from database');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          cached: true,
+          data: {
+            image_url: existingDraw.image_url,
+            fortune_content: existingDraw.fortune_content,
+            draw_date: existingDraw.draw_date,
+          }
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('No cached draw found, calling Coze API...');
 
     // 获取Coze API Key
     const apiKey = Deno.env.get('COZE_API_KEY');
@@ -44,8 +86,6 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log('Calling Coze workflow...');
 
     // 调用Coze工作流
     const cozeResponse = await fetch(
@@ -81,7 +121,7 @@ serve(async (req) => {
     }
 
     const result = await cozeResponse.json();
-    console.log('Coze API full response:', JSON.stringify(result));
+    console.log('Coze API response code:', result.code);
     
     // 检查Coze响应
     if (result.code !== 0) {
@@ -114,7 +154,7 @@ serve(async (req) => {
     
     const { img, yunshi } = parsedData;
     
-    console.log('Extracted - img:', img?.substring(0, 50), 'yunshi:', yunshi?.substring(0, 50));
+    console.log('Extracted - img present:', !!img, 'yunshi present:', !!yunshi);
     
     if (!img || !yunshi) {
       console.error('Missing img or yunshi');
@@ -127,6 +167,27 @@ serve(async (req) => {
       );
     }
 
+    // 保存抽签结果到数据库
+    console.log('Saving fortune draw to database...');
+    const { error: saveError } = await supabase
+      .from('fortune_draws')
+      .upsert({
+        user_id: userId,
+        birth_date: birthDate,
+        draw_date: today,
+        image_url: img,
+        fortune_content: yunshi,
+      }, {
+        onConflict: 'user_id,draw_date'
+      });
+
+    if (saveError) {
+      console.error('Save error:', saveError);
+      // 不阻断返回，只记录错误
+    } else {
+      console.log('Fortune draw saved successfully');
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -134,7 +195,7 @@ serve(async (req) => {
         data: {
           image_url: img,
           fortune_content: yunshi,
-          draw_date: new Date().toISOString().split('T')[0]
+          draw_date: today
         }
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
