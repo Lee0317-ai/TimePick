@@ -6,17 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+console.log('Edge Function loaded');
+
 serve(async (req) => {
+  console.log('===== EDGE FUNCTION INVOKED =====');
+  console.log('Method:', req.method);
+  console.log('URL:', req.url);
+  
   // 处理OPTIONS请求
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request');
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log('=== Draw Fortune Function Started ===');
-
   try {
+    console.log('Processing request...');
+    
     // 获取授权令牌
     const authHeader = req.headers.get('Authorization');
+    console.log('Auth header present:', !!authHeader);
+    
     if (!authHeader) {
       console.error('Missing authorization header');
       return new Response(
@@ -35,8 +44,8 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
     
-    console.log('Supabase URL:', supabaseUrl ? 'OK' : 'MISSING');
-    console.log('Supabase Key:', supabaseKey ? 'OK' : 'MISSING');
+    console.log('Supabase URL:', supabaseUrl?.substring(0, 30) + '...');
+    console.log('Supabase Key present:', !!supabaseKey);
 
     const supabaseClient = createClient(
       supabaseUrl ?? '',
@@ -45,12 +54,14 @@ serve(async (req) => {
     );
 
     // 获取当前用户
+    console.log('Getting user...');
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    
     if (userError) {
-      console.error('Get user error:', userError);
+      console.error('User error:', userError);
       return new Response(
         JSON.stringify({ 
-          error: 'Authentication failed',
+          error: 'Authentication failed: ' + userError.message,
           success: false
         }),
         { 
@@ -74,9 +85,10 @@ serve(async (req) => {
       );
     }
 
-    console.log('User authenticated:', user.id);
+    console.log('User ID:', user.id);
 
-    // 获取用户的出生日期
+    // 获取出生日期
+    console.log('Fetching profile...');
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('birth_date')
@@ -84,10 +96,10 @@ serve(async (req) => {
       .single();
 
     if (profileError) {
-      console.error('Profile query error:', profileError);
+      console.error('Profile error:', profileError);
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to fetch profile',
+          error: 'Failed to fetch profile: ' + profileError.message,
           success: false
         }),
         { 
@@ -97,8 +109,10 @@ serve(async (req) => {
       );
     }
 
+    console.log('Profile:', profile);
+
     if (!profile || !profile.birth_date) {
-      console.log('Birth date not set for user:', user.id);
+      console.log('Birth date not set');
       return new Response(
         JSON.stringify({ 
           error: 'birth_date_required',
@@ -117,7 +131,8 @@ serve(async (req) => {
     console.log('Birth date:', birthDate);
     console.log('Today:', today);
 
-    // 检查今天是否已经抽过签
+    // 检查今天是否已抽签
+    console.log('Checking existing draw...');
     const { data: existingDraw, error: checkError } = await supabaseClient
       .from('fortune_draws')
       .select('*')
@@ -126,12 +141,11 @@ serve(async (req) => {
       .maybeSingle();
 
     if (checkError) {
-      console.error('Check existing draw error:', checkError);
+      console.error('Check error:', checkError);
     }
 
-    // 如果已经抽过签且出生日期未改变，返回已有结果
     if (existingDraw && existingDraw.birth_date === birthDate) {
-      console.log('Returning cached fortune draw');
+      console.log('Returning cached draw');
       return new Response(
         JSON.stringify({
           success: true,
@@ -149,8 +163,10 @@ serve(async (req) => {
       );
     }
 
-    // 调用Coze工作流
+    // 调用Coze API
     const cozeApiKey = Deno.env.get('COZE_API_KEY');
+    console.log('COZE_API_KEY present:', !!cozeApiKey);
+    
     if (!cozeApiKey) {
       console.error('COZE_API_KEY not configured');
       return new Response(
@@ -165,35 +181,27 @@ serve(async (req) => {
       );
     }
 
-    console.log('COZE_API_KEY:', cozeApiKey ? `${cozeApiKey.substring(0, 10)}...` : 'MISSING');
-    console.log('Calling Coze workflow with birth date:', birthDate);
-
-    const cozePayload = {
-      workflow_id: '7599134379873468470',
-      parameters: {
-        birth: birthDate
-      }
-    };
-    console.log('Coze request payload:', JSON.stringify(cozePayload));
-
+    console.log('Calling Coze API...');
     const cozeResponse = await fetch('https://api.coze.cn/v1/workflow/run', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${cozeApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(cozePayload)
+      body: JSON.stringify({
+        workflow_id: '7599134379873468470',
+        parameters: { birth: birthDate }
+      })
     });
 
-    console.log('Coze response status:', cozeResponse.status);
+    console.log('Coze status:', cozeResponse.status);
 
     if (!cozeResponse.ok) {
       const errorText = await cozeResponse.text();
-      console.error('Coze API error:', cozeResponse.status, errorText);
+      console.error('Coze error:', errorText);
       return new Response(
         JSON.stringify({ 
-          error: `Coze API failed: ${cozeResponse.status}`,
-          details: errorText,
+          error: 'Coze API failed: ' + cozeResponse.status,
           success: false
         }),
         { 
@@ -204,14 +212,13 @@ serve(async (req) => {
     }
 
     const cozeData = await cozeResponse.json();
-    console.log('Coze response:', JSON.stringify(cozeData).substring(0, 200) + '...');
+    console.log('Coze code:', cozeData.code);
 
-    // 检查Coze响应
     if (cozeData.code !== 0) {
       console.error('Coze workflow failed:', cozeData.msg);
       return new Response(
         JSON.stringify({ 
-          error: `Coze workflow failed: ${cozeData.msg || 'Unknown error'}`,
+          error: 'Coze workflow failed: ' + cozeData.msg,
           success: false
         }),
         { 
@@ -221,16 +228,14 @@ serve(async (req) => {
       );
     }
 
-    // 解析返回的数据
     let fortuneData;
     try {
       fortuneData = JSON.parse(cozeData.data);
-      console.log('Parsed fortune data:', JSON.stringify(fortuneData).substring(0, 100) + '...');
     } catch (e) {
-      console.error('Failed to parse Coze data:', cozeData.data);
+      console.error('Parse error:', e);
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid response format from Coze',
+          error: 'Invalid response format',
           success: false
         }),
         { 
@@ -241,7 +246,7 @@ serve(async (req) => {
     }
 
     if (!fortuneData.img || !fortuneData.yunshi) {
-      console.error('Missing img or yunshi in fortune data:', fortuneData);
+      console.error('Missing data');
       return new Response(
         JSON.stringify({ 
           error: '识别失败，请重试',
@@ -254,8 +259,8 @@ serve(async (req) => {
       );
     }
 
-    // 保存抽签结果
-    console.log('Saving fortune draw to database...');
+    // 保存结果
+    console.log('Saving to database...');
     const { error: insertError } = await supabaseClient
       .from('fortune_draws')
       .upsert({
@@ -269,13 +274,10 @@ serve(async (req) => {
       });
 
     if (insertError) {
-      console.error('Insert fortune draw error:', insertError);
-      // 不抛出错误，继续返回结果
-    } else {
-      console.log('Fortune draw saved successfully');
+      console.error('Insert error:', insertError);
     }
 
-    console.log('=== Draw Fortune Function Completed Successfully ===');
+    console.log('===== SUCCESS =====');
     return new Response(
       JSON.stringify({
         success: true,
@@ -293,9 +295,9 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('=== Error in draw-fortune function ===');
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('===== ERROR =====');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Internal server error',

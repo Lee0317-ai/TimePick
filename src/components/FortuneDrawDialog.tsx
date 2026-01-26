@@ -72,53 +72,49 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
     trackEvent('fortune_draw_start');
 
     try {
-      console.log('Calling draw-fortune function...');
+      console.log('=== Starting fortune draw ===');
       console.log('User ID:', user.id);
       
-      const { data, error } = await supabase.functions.invoke('draw-fortune', {
+      const response = await supabase.functions.invoke('draw-fortune', {
         method: 'POST',
       });
 
-      console.log('Draw fortune response:', { data, error });
+      console.log('Raw response:', response);
       
-      // 如果有error对象，打印详细信息
+      const { data, error } = response;
+      
+      // 如果有error，打印详细信息
       if (error) {
-        console.error('Draw fortune error details:', {
-          message: error.message,
-          name: error.name,
-          context: error.context,
-          status: error.status,
-        });
+        console.error('=== Error occurred ===');
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
+        console.error('Error name:', error.name);
+        console.error('Error status:', error.status);
+        console.error('Full error object:', JSON.stringify(error, null, 2));
+        
+        // 显示友好的错误信息
+        toast.error('抽签服务暂时不可用，请稍后重试');
+        return;
       }
 
-      // 如果data为null，尝试从error中获取更多信息
-      if (data === null && error) {
-        console.error('Data is null, error object:', error);
-        
-        // 检查是否是出生日期未设置的错误
-        if (error.message?.includes('birth_date_required') || 
-            error.context?.body?.error === 'birth_date_required') {
-          setNeedBirthDate(true);
-          toast.error('请先设置您的出生日期');
-          return;
-        }
-        
-        // 尝试从error.context.body获取错误信息
-        const errorMsg = error.context?.body?.error || 
-                        error.context?.body?.message || 
-                        error.message || 
-                        '服务器错误，请重试';
+      // data为null的情况
+      if (data === null) {
+        console.error('Data is null but no error');
+        toast.error('服务器响应异常，请稍后重试');
+        return;
+      }
+
+      console.log('=== Response data ===');
+      console.log('Data:', data);
+
+      if (!data.success) {
+        console.error('Operation failed:', data);
+        const errorMsg = data.error || data.message || '识别失败，请重试';
         toast.error(errorMsg);
         return;
       }
 
-      if (!data?.success) {
-        console.error('Draw fortune failed:', data);
-        const errorMsg = data?.error || data?.message || '识别失败，请重试';
-        toast.error(errorMsg);
-        return;
-      }
-
+      console.log('=== Success ===');
       setFortuneData(data.data);
       trackEvent('fortune_draw_success', { cached: data.cached });
 
@@ -128,7 +124,8 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
         toast.success('抽签成功！');
       }
     } catch (error) {
-      console.error('Draw fortune exception:', error);
+      console.error('=== Exception caught ===');
+      console.error('Exception:', error);
       toast.error('网络错误，请检查连接后重试');
     } finally {
       setIsDrawing(false);
