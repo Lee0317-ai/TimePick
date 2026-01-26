@@ -300,13 +300,14 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
     if (!fortuneData) return null;
 
     const { constellation, date, sections } = parseFortuneContent(fortuneData.fortune_content);
+    const isMobile = window.innerWidth < 768;
 
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className={`${isMobile ? 'flex flex-col space-y-4' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}`}>
           {/* 左侧：运势图片 */}
           <div className="space-y-3">
-            <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg border-2 border-purple-100 flex items-center justify-center">
+            <div className={`${isMobile ? 'aspect-[4/3]' : 'aspect-square'} rounded-xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg border-2 border-purple-100 flex items-center justify-center`}>
               <img
                 src={fortuneData.image_url}
                 alt="运势签"
@@ -333,7 +334,7 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
           </div>
 
           {/* 右侧：运势内容 */}
-          <ScrollArea className="h-[500px] pr-3">
+          <ScrollArea className={`${isMobile ? 'h-[60vh]' : 'h-[500px]'} pr-3`}>
             <div className="space-y-4">
               {/* 标题 */}
               <div className="text-center pb-3 border-b">
