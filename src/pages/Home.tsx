@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, User, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag, Lightbulb } from 'lucide-react';
+import { Plus, Search, User, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag, Lightbulb, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 import { FolderTree } from '@/components/FolderTree';
 import { TagTree } from '@/components/TagTree';
@@ -22,6 +22,8 @@ import { TreeNode, Folder, ResourceInitData } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { trackEvent } from '@/lib/analytics';
 
 export default function Home() {
@@ -44,6 +46,7 @@ export default function Home() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showInspirationDrawer, setShowInspirationDrawer] = useState(false);
   const [showFortuneDrawDialog, setShowFortuneDrawDialog] = useState(false);
+  const [isFolderDrawerOpen, setIsFolderDrawerOpen] = useState(false);
 
   useEffect(() => {
     document.title = '首页 - 拾光';
@@ -235,72 +238,127 @@ export default function Home() {
             </Tabs> */}
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-              onClick={() => {
-                setShowFortuneDrawDialog(true);
-                trackEvent('fortune_draw_btn_click');
-              }}
-            >
-              <Sparkles className="h-4 w-4" />
-              <span>抽签</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-              onClick={() => toast.info('算运势功能开发中...')}
-            >
-              <Sparkles className="h-4 w-4" />
-              <span>算运势</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
-              onClick={() => {
-                setShowInspirationDrawer(true);
-                trackEvent('inspiration_open');
-              }}
-            >
-              <Lightbulb className="h-4 w-4" />
-              <span>灵感</span>
-            </Button> 
-             <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-2"
-              onClick={() => {
-                setShowTagCloud(true);
-                trackEvent('tag_cloud_open');
-              }}
-            >
-              <Tag className="h-4 w-4" />
-              <span>标签</span>
-              {selectedTags.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary text-primary-foreground rounded-full">
-                  {selectedTags.length}
-                </span>
-              )}
-            </Button> 
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-2"
-              onClick={() => setShowVersionDialog(true)}
-            >
-              <FileText className="h-4 w-4" />
-              <span>更新</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate('/profile')}
-            >
-              <User className="h-5 w-5" />
-            </Button>
+            {/* PC端：显示所有按钮 */}
+            {!isMobile && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                  onClick={() => {
+                    setShowFortuneDrawDialog(true);
+                    trackEvent('fortune_draw_btn_click');
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>抽签</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                  onClick={() => toast.info('算运势功能开发中...')}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>算运势</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
+                  onClick={() => {
+                    setShowInspirationDrawer(true);
+                    trackEvent('inspiration_open');
+                  }}
+                >
+                  <Lightbulb className="h-4 w-4" />
+                  <span>灵感</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={() => {
+                    setShowTagCloud(true);
+                    trackEvent('tag_cloud_open');
+                  }}
+                >
+                  <Tag className="h-4 w-4" />
+                  <span>标签</span>
+                  {selectedTags.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary text-primary-foreground rounded-full">
+                      {selectedTags.length}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-2"
+                  onClick={() => setShowVersionDialog(true)}
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>更新</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/profile')}
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </>
+            )}
+
+            {/* 移动端：显示3个最新功能 */}
+            {isMobile && (
+              <>
+                {/* 抽签 - 带NEW标签 */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="flex flex-col items-center gap-0.5 relative px-2 py-1"
+                  onClick={() => {
+                    setShowFortuneDrawDialog(true);
+                    trackEvent('fortune_draw_btn_click');
+                  }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-[10px]">抽签</span>
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 px-1 py-0 text-[8px] leading-none h-fit">
+                    NEW
+                  </Badge>
+                </Button>
+
+                {/* 算运势 - 带NEW标签 */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="flex flex-col items-center gap-0.5 relative px-2 py-1"
+                  onClick={() => toast.info('算运势功能开发中...')}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-[10px]">算运势</span>
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 px-1 py-0 text-[8px] leading-none h-fit">
+                    NEW
+                  </Badge>
+                </Button>
+
+                {/* 灵感 - 无NEW标签 */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="flex flex-col items-center gap-0.5 px-2 py-1"
+                  onClick={() => {
+                    setShowInspirationDrawer(true);
+                    trackEvent('inspiration_open');
+                  }}
+                >
+                  <Lightbulb className="h-4 w-4" />
+                  <span className="text-[10px]">灵感</span>
+                </Button>
+              </>
+            )}
           </div>
         </div>
         
@@ -392,6 +450,10 @@ export default function Home() {
             selectedTags={selectedTags}
             onConvertToResource={handleConvertToResource}
             onViewAllInspirations={() => setShowInspirationDrawer(true)}
+            onAddFolder={handleAddFolder}
+            onFolderDrawerChange={setIsFolderDrawerOpen}
+            isCollector={currentRole === 'collector'}
+            onResourceMove={handleRefresh}
           />
         </main>
       </div>
@@ -429,18 +491,10 @@ export default function Home() {
       )}
 
       {/* 移动端底部导航 */}
-      {isMobile && (
+      {isMobile && !isFolderDrawerOpen && (
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t z-50 pb-safe">
           <div className="flex items-center justify-around px-2 py-3">
-            <Button
-              variant="ghost"
-              className="flex flex-col items-center gap-1 h-auto py-2 px-4"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <FolderTreeIcon className="h-5 w-5" />
-              <span className="text-xs">分类</span>
-            </Button>
-            
+            {/* 1. 灵感 */}
             <Button
               variant="ghost"
               className="flex flex-col items-center gap-1 h-auto py-2 px-4"
@@ -453,6 +507,17 @@ export default function Home() {
               <span className="text-xs">灵感</span>
             </Button>
 
+            {/* 2. 搜索 */}
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2 px-4"
+              onClick={() => navigate('/search')}
+            >
+              <Search className="h-5 w-5" />
+              <span className="text-xs">搜索</span>
+            </Button>
+
+            {/* 3. 新增（中间悬浮） */}
             <Button
               className="h-14 w-14 rounded-full shadow-lg -mt-8"
               size="icon"
@@ -463,16 +528,85 @@ export default function Home() {
             >
               <Plus className="h-6 w-6" />
             </Button>
-            
-            <Button
-              variant="ghost"
-              className="flex flex-col items-center gap-1 h-auto py-2 px-4"
-              onClick={() => navigate('/search')}
-            >
-              <Search className="h-5 w-5" />
-              <span className="text-xs">搜索</span>
-            </Button>
-            
+
+            {/* 4. 发现 - Popover菜单 */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex flex-col items-center gap-1 h-auto py-2 px-4"
+                >
+                  <Compass className="h-5 w-5" />
+                  <span className="text-xs">发现</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-72 p-2" align="end" side="top">
+                <div className="space-y-1">
+                  {/* 抽签 */}
+                  <button
+                    className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors text-left"
+                    onClick={() => {
+                      setShowFortuneDrawDialog(true);
+                      trackEvent('fortune_draw_btn_click');
+                    }}
+                  >
+                    <Sparkles className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">抽签</div>
+                      <div className="text-xs text-muted-foreground">每日一签，预知运势</div>
+                    </div>
+                  </button>
+
+                  {/* 算运势 */}
+                  <button
+                    className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors text-left"
+                    onClick={() => toast.info('算运势功能开发中...')}
+                  >
+                    <Sparkles className="h-5 w-5 text-indigo-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">算运势</div>
+                      <div className="text-xs text-muted-foreground">AI运势推算</div>
+                    </div>
+                  </button>
+
+                  {/* 标签 */}
+                  <button
+                    className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors text-left"
+                    onClick={() => {
+                      setShowTagCloud(true);
+                      trackEvent('tag_cloud_open');
+                    }}
+                  >
+                    <Tag className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm flex items-center gap-2">
+                        标签
+                        {selectedTags.length > 0 && (
+                          <span className="px-1.5 py-0.5 text-xs bg-primary text-primary-foreground rounded-full">
+                            {selectedTags.length}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">多维度资源筛选</div>
+                    </div>
+                  </button>
+
+                  {/* 版本更新 */}
+                  <button
+                    className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors text-left"
+                    onClick={() => setShowVersionDialog(true)}
+                  >
+                    <FileText className="h-5 w-5 text-gray-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">版本更新</div>
+                      <div className="text-xs text-muted-foreground">查看最新功能</div>
+                    </div>
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* 5. 我的 */}
             <Button
               variant="ghost"
               className="flex flex-col items-center gap-1 h-auto py-2 px-4"

@@ -11,11 +11,13 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ResourceCard } from './ResourceCard';
 import { SubFolderCard } from './SubFolderCard';
 import { EmptyState } from './EmptyState';
 import { RecentInspirations } from './RecentInspirations';
-import { Loader2, Tag, Folder as FolderIcon, FileText, LayoutGrid, List, Image, Layers } from 'lucide-react';
+import { FolderTree } from './FolderTree';
+import { Loader2, Tag, Folder as FolderIcon, FileText, LayoutGrid, List, Image, Layers, FolderTree as FolderTreeIcon } from 'lucide-react';
 import { Resource, TreeNode, Folder, ViewType, ResourceInitData } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useViewPreference } from '@/hooks/useViewPreference';
@@ -31,9 +33,14 @@ interface ResourceListProps {
   selectedTags?: string[];
   onConvertToResource?: (data: ResourceInitData) => void;
   onViewAllInspirations?: () => void;
+  // 新增：文件夹树相关props
+  onAddFolder?: (parentId?: string) => void;
+  onFolderDrawerChange?: (open: boolean) => void;
+  isCollector?: boolean;
+  onResourceMove?: () => void;
 }
 
-export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSelect, onEditFolder, selectedTags = [], onConvertToResource, onViewAllInspirations }: ResourceListProps) {
+export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSelect, onEditFolder, selectedTags = [], onConvertToResource, onViewAllInspirations, onAddFolder, onFolderDrawerChange, isCollector = true, onResourceMove }: ResourceListProps) {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [resources, setResources] = useState<Resource[]>([]);
@@ -42,8 +49,11 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
   const [folderPath, setFolderPath] = useState<Folder[]>([]);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('folder-and-resource');
   const [viewType, setViewType] = useViewPreference('view', 'grid');
+  const [showFolderDrawer, setShowFolderDrawer] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const savedScrollTop = useRef<number>(0);
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
 
   // 递归获取所有子文件夹ID
   const getAllSubFolderIds = useCallback(async (folderId: string): Promise<string[]> => {
@@ -209,6 +219,47 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
     }
   }, [loading, resources, subFolders]);
 
+  // 右滑手势识别（从左边往右滑打开文件夹树Drawer）
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+
+      const deltaX = touchEndX - touchStartX.current;
+      const deltaY = touchEndY - touchStartY.current;
+
+      // 判断是否为右滑手势：
+      // 1. 触摸起点在屏幕左边 < 30px
+      // 2. 横向移动 > 50px（右滑）
+      // 3. 纵向移动 < 30px（避免误触）
+      if (
+        touchStartX.current < 30 &&
+        deltaX > 50 &&
+        Math.abs(deltaY) < 30
+      ) {
+        setShowFolderDrawer(true);
+      }
+    };
+
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+      mainElement.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+      return () => {
+        mainElement.removeEventListener('touchstart', handleTouchStart);
+        mainElement.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+  }, [isMobile]);
+
   const renderBreadcrumb = () => {
     if (!selectedNode) return null;
 
@@ -311,7 +362,48 @@ export function ResourceList({ selectedNode, refreshTrigger, onRefresh, onNodeSe
     <div className="h-full flex flex-col">
       <div className="border-b p-4 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          {renderBreadcrumb()}
+          <div className="flex items-center gap-2 flex-1">
+            {renderBreadcrumb()}
+
+            {/* 移动端：文件夹树Drawer按钮 */}
+            {isMobile && (
+              <Sheet open={showFolderDrawer} onOpenChange={(open) => {
+                setShowFolderDrawer(open);
+                onFolderDrawerChange?.(open);
+              }}>
+                <SheetTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    title="显示文件夹树 (可左往右滑)"
+                  >
+                    <FolderTreeIcon className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="p-0 w-64">
+                  <SheetTitle className="sr-only">文件夹树</SheetTitle>
+                  <SheetDescription className="sr-only">选择文件夹查看资源</SheetDescription>
+                  <div className="h-full flex flex-col bg-card">
+                    <ScrollArea className="flex-1">
+                      <FolderTree
+                        onNodeSelect={(node) => {
+                          onNodeSelect?.(node);
+                          setShowFolderDrawer(false); // 选中后关闭Drawer
+                        }}
+                        onAddFolder={onAddFolder}
+                        onEditFolder={onEditFolder}
+                        onAddResource={() => {}} // 在Drawer中不需要
+                        refreshTrigger={refreshTrigger}
+                        isCollector={isCollector}
+                        onResourceMove={onResourceMove}
+                      />
+                    </ScrollArea>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
+          </div>
           {/* 显示模式切换和视图样式切换 */}
           {(subFolders.length > 0 || resources.length > 0) && (
             <div className="flex items-center gap-2 md:gap-4 flex-wrap">
