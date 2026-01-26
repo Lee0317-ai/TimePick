@@ -76,6 +76,36 @@ export type Database = {
           },
         ]
       }
+      fortune_draws: {
+        Row: {
+          birth_date: string
+          created_at: string | null
+          draw_date: string
+          fortune_content: string
+          id: string
+          image_url: string
+          user_id: string
+        }
+        Insert: {
+          birth_date: string
+          created_at?: string | null
+          draw_date: string
+          fortune_content: string
+          id?: string
+          image_url: string
+          user_id: string
+        }
+        Update: {
+          birth_date?: string
+          created_at?: string | null
+          draw_date?: string
+          fortune_content?: string
+          id?: string
+          image_url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       inspirations: {
         Row: {
           content: string
@@ -176,6 +206,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          birth_date: string | null
           created_at: string | null
           id: string
           nickname: string | null
@@ -184,6 +215,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          birth_date?: string | null
           created_at?: string | null
           id: string
           nickname?: string | null
@@ -192,6 +224,7 @@ export type Database = {
           username: string
         }
         Update: {
+          birth_date?: string | null
           created_at?: string | null
           id?: string
           nickname?: string | null

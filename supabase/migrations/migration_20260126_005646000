@@ -1,0 +1,42 @@
+-- 添加出生日期到profiles表
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS birth_date DATE;
+
+-- 创建抽签记录表
+CREATE TABLE IF NOT EXISTS fortune_draws (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  birth_date DATE NOT NULL,
+  draw_date DATE NOT NULL,
+  image_url TEXT NOT NULL,
+  fortune_content TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT fortune_draws_user_date_unique UNIQUE(user_id, draw_date)
+);
+
+-- 添加索引
+CREATE INDEX IF NOT EXISTS idx_fortune_draws_user_id ON fortune_draws(user_id);
+CREATE INDEX IF NOT EXISTS idx_fortune_draws_draw_date ON fortune_draws(draw_date);
+CREATE INDEX IF NOT EXISTS idx_fortune_draws_user_date ON fortune_draws(user_id, draw_date);
+
+-- 启用RLS
+ALTER TABLE fortune_draws ENABLE ROW LEVEL SECURITY;
+
+-- RLS策略
+CREATE POLICY "Users can view own fortune draws"
+  ON fortune_draws FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own fortune draws"
+  ON fortune_draws FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- 更新profiles表索引
+CREATE INDEX IF NOT EXISTS idx_profiles_birth_date ON profiles(birth_date);
+
+COMMENT ON COLUMN profiles.birth_date IS '用户出生日期，用于星座运势计算';
+COMMENT ON TABLE fortune_draws IS '用户每日抽签记录表，每天仅可抽一次';
+COMMENT ON COLUMN fortune_draws.birth_date IS '抽签时使用的出生日期，用于追踪日期变更后的重抽';
+COMMENT ON COLUMN fortune_draws.draw_date IS '抽签日期（仅日期部分）';
+COMMENT ON COLUMN fortune_draws.image_url IS 'Coze返回的运势图片URL';
+COMMENT ON COLUMN fortune_draws.fortune_content IS 'Coze返回的运势文本内容';
