@@ -63,23 +63,35 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
     trackEvent('fortune_draw_start');
 
     try {
+      console.log('Calling draw-fortune function...');
+      
       const { data, error } = await supabase.functions.invoke('draw-fortune', {
         method: 'POST',
       });
 
+      console.log('Draw fortune response:', { data, error });
+
       if (error) {
         console.error('Draw fortune error:', error);
-        if (error.message?.includes('birth_date_required')) {
+        
+        // 检查是否是出生日期未设置的错误
+        if (error.message?.includes('birth_date_required') || 
+            data?.error === 'birth_date_required') {
           setNeedBirthDate(true);
           toast.error('请先设置您的出生日期');
-        } else {
-          toast.error('抽签失败，请重试');
+          return;
         }
+        
+        // 显示详细错误信息
+        const errorMsg = error.message || data?.error || '识别失败，请重试';
+        toast.error(errorMsg);
         return;
       }
 
       if (!data?.success) {
-        toast.error(data?.error || '识别失败，请重试');
+        console.error('Draw fortune failed:', data);
+        const errorMsg = data?.error || data?.message || '识别失败，请重试';
+        toast.error(errorMsg);
         return;
       }
 
@@ -92,8 +104,8 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
         toast.success('抽签成功！');
       }
     } catch (error) {
-      console.error('Draw fortune error:', error);
-      toast.error('识别失败，请重试');
+      console.error('Draw fortune exception:', error);
+      toast.error('网络错误，请检查连接后重试');
     } finally {
       setIsDrawing(false);
     }

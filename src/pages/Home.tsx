@@ -285,6 +285,15 @@ export default function Home() {
             <Button
               variant="ghost"
               size="sm"
+              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+              onClick={() => toast.info('算运势功能开发中...')}
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>算运势</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50"
               onClick={() => {
                 setShowInspirationDrawer(true);
