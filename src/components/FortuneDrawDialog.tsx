@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Loader2, Calendar } from 'lucide-react';
+import { Sparkles, Loader2, Calendar, Briefcase, GraduationCap, Heart, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { FortuneDrawResponse } from '@/types';
 import { trackEvent } from '@/lib/analytics';
@@ -235,48 +236,172 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
     </div>
   );
 
+  // 解析运势内容
+  const parseFortuneContent = (content: string) => {
+    const lines = content.split('\n').filter(line => line.trim());
+    const sections: { [key: string]: { trend: string; advice: string } } = {};
+    let currentSection = '';
+    let constellation = '';
+    let date = '';
+
+    lines.forEach(line => {
+      // 提取星座
+      if (line.includes('**星座**')) {
+        constellation = line.split('：')[1]?.trim() || '';
+      }
+      // 提取时间
+      else if (line.includes('**时间**')) {
+        date = line.split('：')[1]?.trim() || '';
+      }
+      // 提取各维度
+      else if (line.includes('「事业」')) {
+        currentSection = 'career';
+        sections[currentSection] = { trend: '', advice: '' };
+      }
+      else if (line.includes('「学业」')) {
+        currentSection = 'study';
+        sections[currentSection] = { trend: '', advice: '' };
+      }
+      else if (line.includes('「感情」')) {
+        currentSection = 'love';
+        sections[currentSection] = { trend: '', advice: '' };
+      }
+      else if (line.includes('「健康」')) {
+        currentSection = 'health';
+        sections[currentSection] = { trend: '', advice: '' };
+      }
+      // 提取趋势和建议
+      else if (currentSection) {
+        if (line.includes('▶️ 趋势')) {
+          sections[currentSection].trend = line.split('：')[1]?.trim() || '';
+        }
+        else if (line.includes('▶️ 建议')) {
+          sections[currentSection].advice = line.split('：')[1]?.trim() || '';
+        }
+      }
+    });
+
+    return { constellation, date, sections };
+  };
+
+  // 获取维度图标和颜色
+  const getSectionConfig = (key: string) => {
+    const configs = {
+      career: { icon: Briefcase, label: '事业', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
+      study: { icon: GraduationCap, label: '学业', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
+      love: { icon: Heart, label: '感情', color: 'text-pink-600', bgColor: 'bg-pink-50', borderColor: 'border-pink-200' },
+      health: { icon: Activity, label: '健康', color: 'text-orange-600', bgColor: 'bg-orange-50', borderColor: 'border-orange-200' },
+    };
+    return configs[key as keyof typeof configs] || configs.career;
+  };
+
   // 渲染抽签结果
   const renderFortuneResult = () => {
     if (!fortuneData) return null;
 
+    const { constellation, date, sections } = parseFortuneContent(fortuneData.fortune_content);
+
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 左侧：运势图片 */}
-          <div className="aspect-square rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-            <img
-              src={fortuneData.image_url}
-              alt="运势签"
-              className="w-full h-full object-cover"
-              crossOrigin="anonymous"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                target.parentElement!.innerHTML = '<div class="text-muted-foreground">图片加载失败</div>';
-              }}
-            />
+          <div className="space-y-3">
+            <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg border-2 border-purple-100 flex items-center justify-center">
+              <img
+                src={fortuneData.image_url}
+                alt="运势签"
+                className="w-full h-full object-cover"
+                crossOrigin="anonymous"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.innerHTML = '<div class="text-muted-foreground flex flex-col items-center justify-center gap-2"><Sparkles class="h-12 w-12" /><p>运势签图</p></div>';
+                }}
+              />
+            </div>
+            
+            {/* 星座和日期信息 */}
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-purple-600" />
+                <span className="text-sm font-medium text-purple-900">{constellation}</span>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                {date || new Date(fortuneData.draw_date).toLocaleDateString('zh-CN')}
+              </Badge>
+            </div>
           </div>
 
           {/* 右侧：运势内容 */}
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-semibold">今日运势</h3>
+          <ScrollArea className="h-[500px] pr-3">
+            <div className="space-y-4">
+              {/* 标题 */}
+              <div className="text-center pb-3 border-b">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full">
+                  <Sparkles className="h-5 w-5 text-purple-600" />
+                  <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    今日运势
+                  </h3>
+                </div>
               </div>
-              <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                {fortuneData.fortune_content}
-              </div>
-              <div className="pt-4 text-xs text-muted-foreground">
-                抽签日期：{new Date(fortuneData.draw_date).toLocaleDateString('zh-CN')}
+
+              {/* 各维度运势 */}
+              {Object.entries(sections).map(([key, data]) => {
+                const config = getSectionConfig(key);
+                const Icon = config.icon;
+
+                return (
+                  <div 
+                    key={key}
+                    className={`p-4 rounded-xl border-2 ${config.borderColor} ${config.bgColor} transition-all hover:shadow-md`}
+                  >
+                    {/* 维度标题 */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className={`p-1.5 rounded-lg bg-white shadow-sm ${config.color}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <h4 className={`font-semibold ${config.color}`}>{config.label}</h4>
+                    </div>
+
+                    {/* 趋势 */}
+                    {data.trend && (
+                      <div className="mb-2">
+                        <p className="text-xs text-muted-foreground mb-1 font-medium">趋势</p>
+                        <p className="text-sm leading-relaxed text-gray-700">
+                          {data.trend}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 建议 */}
+                    {data.advice && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1 font-medium">建议</p>
+                        <p className="text-sm leading-relaxed text-gray-700">
+                          {data.advice}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* 抽签日期 */}
+              <div className="pt-2 text-center">
+                <p className="text-xs text-muted-foreground">
+                  抽签日期：{new Date(fortuneData.draw_date).toLocaleDateString('zh-CN', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
               </div>
             </div>
           </ScrollArea>
         </div>
 
         <Button
-          className="w-full"
-          variant="outline"
+          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
           onClick={handleClose}
         >
           知道了
