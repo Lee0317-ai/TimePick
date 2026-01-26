@@ -39,15 +39,24 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
   const checkAndDraw = async () => {
     if (!user) return;
 
-    // 检查是否有出生日期
-    const { data: profile } = await supabase
+    // 先检查是否有出生日期
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('birth_date')
       .eq('id', user.id)
       .single();
 
+    console.log('Profile check:', { profile, profileError });
+
+    if (profileError) {
+      toast.error('获取个人信息失败');
+      return;
+    }
+
     if (!profile?.birth_date) {
+      console.log('Birth date not set, showing input dialog');
       setNeedBirthDate(true);
+      toast.info('请先设置您的出生日期');
       return;
     }
 
@@ -64,26 +73,41 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
 
     try {
       console.log('Calling draw-fortune function...');
+      console.log('User ID:', user.id);
       
       const { data, error } = await supabase.functions.invoke('draw-fortune', {
         method: 'POST',
       });
 
       console.log('Draw fortune response:', { data, error });
-
+      
+      // 如果有error对象，打印详细信息
       if (error) {
-        console.error('Draw fortune error:', error);
+        console.error('Draw fortune error details:', {
+          message: error.message,
+          name: error.name,
+          context: error.context,
+          status: error.status,
+        });
+      }
+
+      // 如果data为null，尝试从error中获取更多信息
+      if (data === null && error) {
+        console.error('Data is null, error object:', error);
         
         // 检查是否是出生日期未设置的错误
         if (error.message?.includes('birth_date_required') || 
-            data?.error === 'birth_date_required') {
+            error.context?.body?.error === 'birth_date_required') {
           setNeedBirthDate(true);
           toast.error('请先设置您的出生日期');
           return;
         }
         
-        // 显示详细错误信息
-        const errorMsg = error.message || data?.error || '识别失败，请重试';
+        // 尝试从error.context.body获取错误信息
+        const errorMsg = error.context?.body?.error || 
+                        error.context?.body?.message || 
+                        error.message || 
+                        '服务器错误，请重试';
         toast.error(errorMsg);
         return;
       }
