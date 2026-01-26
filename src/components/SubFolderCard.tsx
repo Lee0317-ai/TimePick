@@ -29,10 +29,11 @@ interface SubFolderCardProps {
   onOpen: (folder: FolderType) => void;
   onEdit: (folder: FolderType) => void;
   onDelete?: () => void;
+  onResourceMove?: () => void;
   compact?: boolean;
 }
 
-export function SubFolderCard({ folder, onOpen, onEdit, onDelete, compact = false }: SubFolderCardProps) {
+export function SubFolderCard({ folder, onOpen, onEdit, onDelete, onResourceMove, compact = false }: SubFolderCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [subFolderCount, setSubFolderCount] = useState(0);
   const [resourceCount, setResourceCount] = useState(0);
@@ -74,6 +75,41 @@ export function SubFolderCard({ folder, onOpen, onEdit, onDelete, compact = fals
     setShowDeleteDialog(false);
   };
 
+  // 拖拽处理函数
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.add('bg-accent/50', 'scale-105');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-accent/50', 'scale-105');
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove('bg-accent/50', 'scale-105');
+
+    const resourceId = e.dataTransfer.getData('resourceId');
+    if (!resourceId) return;
+
+    try {
+      const { error } = await supabase
+        .from('resources')
+        .update({ folder_id: folder.id })
+        .eq('id', resourceId);
+
+      if (error) throw error;
+
+      toast.success('资源移动成功');
+      trackEvent('resource_drag_drop', { resourceId, targetFolderId: folder.id });
+      onResourceMove?.();
+    } catch (error) {
+      console.error('Move resource error:', error);
+      toast.error('移动失败');
+    }
+  };
+
   // 计算总资源数（用于紧凑模式显示）
   const totalCount = subFolderCount + resourceCount;
 
@@ -87,6 +123,9 @@ export function SubFolderCard({ folder, onOpen, onEdit, onDelete, compact = fals
             onOpen(folder);
             trackEvent('folder_open_click', { folderId: folder.id });
           }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
           {/* 左侧图标 */}
           <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -170,6 +209,9 @@ export function SubFolderCard({ folder, onOpen, onEdit, onDelete, compact = fals
           onOpen(folder);
           trackEvent('folder_open_click', { folderId: folder.id });
         }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <div className="aspect-video bg-gradient-to-br from-primary/10 to-primary/5 relative overflow-hidden flex items-center justify-center">
           <div className="relative">

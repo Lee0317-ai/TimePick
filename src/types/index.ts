@@ -69,10 +69,8 @@ export interface Inspiration {
 }
 
 export interface TreeNode {
-  type: 'section' | 'module' | 'all' | 'folder' | 'tags';
-  data: Section | Module | Folder | { id: string; name: string; tags?: string[] };
-  section?: Section;
-  module?: Module;
+  type: 'all' | 'folder' | 'tags';
+  data: Folder | { id: string; name: string; tags?: string[] };
   folder?: Folder;
 }
 

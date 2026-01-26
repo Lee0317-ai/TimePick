@@ -6,13 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, User, LayoutGrid, LayoutList, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag, Lightbulb, Home as HomeIcon } from 'lucide-react';
+import { Plus, Search, User, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
-import { ResourceTree } from '@/components/ResourceTree';
 import { FolderTree } from '@/components/FolderTree';
 import { TagTree } from '@/components/TagTree';
 import { ResourceList } from '@/components/ResourceList';
-import { ModuleDialog } from '@/components/ModuleDialog';
 import { FolderDialog } from '@/components/FolderDialog';
 import { ResourceDialog } from '@/components/ResourceDialog';
 import { WeatherWidget } from '@/components/WeatherWidget';
@@ -32,10 +30,9 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<'collector' | 'searcher'>('collector');
-  const [viewMode, setViewMode] = useState<'section' | 'module' | 'folder' | 'tags'>('folder');
+  const [viewMode, setViewMode] = useState<'folder' | 'tags'>('folder');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
-  const [showModuleDialog, setShowModuleDialog] = useState(false);
   const [showFolderDialog, setShowFolderDialog] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | undefined>(undefined);
   const [parentFolderId, setParentFolderId] = useState<string | undefined>(undefined);
@@ -177,55 +174,33 @@ export default function Home() {
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-64">
                   <SheetTitle className="sr-only">导航菜单</SheetTitle>
-                  <SheetDescription className="sr-only">选择板块或模块查看资源</SheetDescription>
+                  <SheetDescription className="sr-only">选择文件夹或标签查看资源</SheetDescription>
                   <div className="h-full flex flex-col bg-card">
                     <div className="p-4 border-b flex items-center justify-between">
-                      <div className="flex gap-2">
-                        <Button
-                          variant={viewMode === 'folder' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => {
-                            setViewMode('folder');
-                            trackEvent('dimension_switch_click', { mode: 'folder' });
-                          }}
-                          title="文件夹"
-                        >
-                          <FolderTreeIcon className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant={viewMode === 'tags' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => {
-                            setViewMode('tags');
-                            trackEvent('dimension_switch_click', { mode: 'tags' });
-                          }}
-                          title="标签"
-                        >
-                          <Tag className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant={viewMode === 'section' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => {
-                            setViewMode('section');
-                            trackEvent('dimension_switch_click', { mode: 'section' });
-                          }}
-                          title="板块"
-                        >
-                          <LayoutGrid className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant={viewMode === 'module' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => {
-                            setViewMode('module');
-                            trackEvent('dimension_switch_click', { mode: 'module' });
-                          }}
-                          title="模块"
-                        >
-                          <LayoutList className="h-4 w-4" />
-                        </Button>
-                      </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant={viewMode === 'folder' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setViewMode('folder');
+                      trackEvent('dimension_switch_click', { mode: 'folder' });
+                    }}
+                    title="文件夹"
+                  >
+                    <FolderTreeIcon className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'tags' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setViewMode('tags');
+                      trackEvent('dimension_switch_click', { mode: 'tags' });
+                    }}
+                    title="标签"
+                  >
+                    <Tag className="h-4 w-4" />
+                  </Button>
+                </div>
                     </div>
                     <ScrollArea className="flex-1">
                       {viewMode === 'folder' ? (
@@ -238,21 +213,11 @@ export default function Home() {
                           isCollector={currentRole === 'collector'}
                           onResourceMove={handleRefresh}
                         />
-                      ) : viewMode === 'tags' ? (
+                      ) : (
                         <TagTree
                           selectedTags={selectedTags}
                           onTagSelect={setSelectedTags}
                           onNodeSelect={handleNodeSelect}
-                        />
-                      ) : (
-                        <ResourceTree
-                          viewMode={viewMode as 'section' | 'module'}
-                          onNodeSelect={handleNodeSelect}
-                          onAddModule={() => setShowModuleDialog(true)}
-                          onAddResource={() => setShowResourceDialog(true)}
-                          refreshTrigger={refreshTrigger}
-                          isCollector={currentRole === 'collector'}
-                          onResourceMove={handleRefresh}
                         />
                       )}
                     </ScrollArea>
@@ -381,28 +346,6 @@ export default function Home() {
                     <FolderTreeIcon className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant={viewMode === 'section' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      setViewMode('section');
-                      trackEvent('dimension_switch_click', { mode: 'section' });
-                    }}
-                    title="板块"
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'module' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      setViewMode('module');
-                      trackEvent('dimension_switch_click', { mode: 'module' });
-                    }}
-                    title="模块"
-                  >
-                    <LayoutList className="h-4 w-4" />
-                  </Button>
-                  <Button
                     variant={viewMode === 'tags' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => {
@@ -426,21 +369,11 @@ export default function Home() {
                     isCollector={currentRole === 'collector'}
                     onResourceMove={handleRefresh}
                   />
-                ) : viewMode === 'tags' ? (
+                ) : (
                   <TagTree
                     selectedTags={selectedTags}
                     onTagSelect={setSelectedTags}
                     onNodeSelect={handleNodeSelect}
-                  />
-                ) : (
-                  <ResourceTree
-                    viewMode={viewMode as 'section' | 'module'}
-                    onNodeSelect={handleNodeSelect}
-                    onAddModule={() => setShowModuleDialog(true)}
-                    onAddResource={() => setShowResourceDialog(true)}
-                    refreshTrigger={refreshTrigger}
-                    isCollector={currentRole === 'collector'}
-                    onResourceMove={handleRefresh}
                   />
                 )}
               </ScrollArea>
@@ -553,11 +486,6 @@ export default function Home() {
       )}
 
       {/* 对话框 */}
-      <ModuleDialog
-        open={showModuleDialog}
-        onOpenChange={setShowModuleDialog}
-        onSuccess={handleRefresh}
-      />
       <FolderDialog
         open={showFolderDialog}
         onOpenChange={handleFolderDialogClose}
@@ -569,8 +497,6 @@ export default function Home() {
         open={showResourceDialog}
         onOpenChange={handleResourceDialogClose}
         onSuccess={handleRefresh}
-        initialSectionId={selectedNode?.type === 'section' ? selectedNode.data.id : selectedNode?.section?.id}
-        initialModuleId={selectedNode?.type === 'module' ? selectedNode.data.id : undefined}
         initialFolderId={selectedNode?.type === 'folder' ? selectedNode.data.id : undefined}
         initialData={resourceInitData}
       />

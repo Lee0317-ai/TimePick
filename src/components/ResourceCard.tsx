@@ -219,8 +219,13 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView, vie
           <Tooltip>
             <TooltipTrigger asChild>
               <Card
-                className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+                className="overflow-hidden hover:shadow-lg transition-shadow cursor-move group"
                 onClick={() => setShowPreview(true)}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('resourceId', resource.id);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
               >
                 <div className="aspect-square bg-muted relative overflow-hidden">
                   <img
@@ -279,8 +284,13 @@ export function ResourceCard({ resource, onDelete, highlightKeyword, onView, vie
     return (
       <>
         <Card
-          className="flex items-center gap-3 p-3 hover:shadow-md transition-all cursor-pointer"
+          className="flex items-center gap-3 p-3 hover:shadow-md transition-all cursor-move"
           onClick={() => setShowPreview(true)}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('resourceId', resource.id);
+            e.dataTransfer.effectAllowed = 'move';
+          }}
         >
           {/* 左侧缩略图 */}
           <div className="shrink-0 w-16 h-16 rounded-lg bg-muted overflow-hidden">

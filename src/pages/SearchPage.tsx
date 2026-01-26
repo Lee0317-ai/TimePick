@@ -17,11 +17,10 @@ export default function SearchPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const [keyword, setKeyword] = useState(searchParams.get('q') || '');
-  const [results, setResults] = useState<Resource[]>([]);
-  const [history, setHistory] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [groupedResults, setGroupedResults] = useState<Record<string, Resource[]>>({});
+    const [keyword, setKeyword] = useState(searchParams.get('q') || '');
+    const [results, setResults] = useState<Resource[]>([]);
+    const [history, setHistory] = useState<string[]>([]);
+    const [loading, setLoading] = useState(false);
 
   const loadSearchHistory = useCallback(async () => {
     if (!user) return;
@@ -49,7 +48,7 @@ export default function SearchPage() {
     loadSearchHistory();
   }, [user, loadSearchHistory]);
 
-  const performSearch = useCallback(async (kw: string) => {
+    const performSearch = useCallback(async (kw: string) => {
     if (!user || !kw.trim()) return;
 
     setLoading(true);
@@ -59,11 +58,7 @@ export default function SearchPage() {
     // 增强搜索：支持标签、名称、备注、URL、内容
     const { data, error } = await supabase
       .from('resources')
-      .select(`
-        *,
-        sections:section_id(name, type),
-        modules:module_id(name)
-      `)
+      .select('*')
       .eq('user_id', user.id);
 
     setLoading(false);
@@ -76,24 +71,24 @@ export default function SearchPage() {
     // 客户端过滤：支持标签数组搜索
     const filteredResults = (data as Resource[] || []).filter(resource => {
       const keyword = kw.toLowerCase();
-      
+
       // 搜索名称
       if (resource.name?.toLowerCase().includes(keyword)) return true;
-      
+
       // 搜索备注
       if (resource.notes?.toLowerCase().includes(keyword)) return true;
-      
+
       // 搜索URL
       if (resource.url?.toLowerCase().includes(keyword)) return true;
-      
+
       // 搜索内容
       if (resource.content?.toLowerCase().includes(keyword)) return true;
-      
+
       // 搜索标签
       if (resource.tags && resource.tags.length > 0) {
         return resource.tags.some(tag => tag.toLowerCase().includes(keyword));
       }
-      
+
       return false;
     });
 
@@ -101,17 +96,6 @@ export default function SearchPage() {
     if (filteredResults.length > 0) {
       trackEvent('search_result_expose', { count: filteredResults.length });
     }
-
-    // 按板块分组
-    const grouped: Record<string, Resource[]> = {};
-    filteredResults.forEach(item => {
-      const sectionName = item.sections?.name || '未分类';
-      if (!grouped[sectionName]) {
-        grouped[sectionName] = [];
-      }
-      grouped[sectionName].push(item);
-    });
-    setGroupedResults(grouped);
   }, [user, saveSearchHistory]);
 
   useEffect(() => {
@@ -234,22 +218,17 @@ export default function SearchPage() {
                       支持标签搜索
                     </Badge>
                   </div>
-                  {Object.entries(groupedResults).map(([sectionName, items]) => (
-                    <div key={sectionName}>
-                      <h2 className="text-lg font-semibold mb-3">{sectionName}</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {items.map((resource) => (
-                          <ResourceCard
-                            key={resource.id}
-                            resource={resource}
-                            highlightKeyword={keyword}
-                            onDelete={() => performSearch(keyword)}
-                            onView={() => trackEvent('global_search_result_click', { resourceId: resource.id })}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {results.map((resource) => (
+                      <ResourceCard
+                        key={resource.id}
+                        resource={resource}
+                        highlightKeyword={keyword}
+                        onDelete={() => performSearch(keyword)}
+                        onView={() => trackEvent('global_search_result_click', { resourceId: resource.id })}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

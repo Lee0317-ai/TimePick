@@ -18,21 +18,16 @@ interface ResourceDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   editResource?: Resource;
-  initialSectionId?: string;
-  initialModuleId?: string;
   initialFolderId?: string;
   initialData?: ResourceInitData;
 }
 
-export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, initialSectionId, initialModuleId, initialFolderId, initialData }: ResourceDialogProps) {
+export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, initialFolderId, initialData }: ResourceDialogProps) {
   const { user } = useAuth();
   const [sections, setSections] = useState<Section[]>([]);
-  const [modules, setModules] = useState<Module[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [filteredModules, setFilteredModules] = useState<Module[]>([]);
-  
+
   const [selectedSection, setSelectedSection] = useState('');
-  const [selectedModule, setSelectedModule] = useState('none');
   const [selectedFolder, setSelectedFolder] = useState('none');
   const [resourceName, setResourceName] = useState('');
   const [url, setUrl] = useState('');
@@ -45,23 +40,6 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [recognizedImageUrl, setRecognizedImageUrl] = useState('');
   const [inspirationId, setInspirationId] = useState<string | null>(null);
-
-  const loadModules = useCallback(async () => {
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('modules')
-      .select(`
-        *,
-        module_sections(section_id)
-      `)
-      .eq('user_id', user.id)
-      .order('sort_order');
-
-    if (data) {
-      setModules(data as Module[]);
-    }
-  }, [user]);
 
   const loadFolders = useCallback(async () => {
     if (!user) return;
@@ -80,12 +58,10 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
   useEffect(() => {
     if (open) {
       loadSections();
-      loadModules();
       loadFolders();
-      
+
       if (editResource) {
         setSelectedSection(editResource.section_id);
-        setSelectedModule(editResource.module_id || 'none');
         setSelectedFolder(editResource.folder_id || 'none');
         setResourceName(editResource.name);
         setUrl(editResource.url || '');
@@ -94,8 +70,6 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         setTags(editResource.tags || []);
       } else {
         trackEvent('resource_add_expose');
-        if (initialSectionId) setSelectedSection(initialSectionId);
-        if (initialModuleId) setSelectedModule(initialModuleId);
         if (initialFolderId) setSelectedFolder(initialFolderId);
         if (initialData) {
           setResourceName(initialData.name);
@@ -109,22 +83,10 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
     } else {
       resetForm();
     }
-  }, [open, editResource, loadModules, loadFolders, initialSectionId, initialModuleId, initialFolderId]);
-
-  useEffect(() => {
-    if (selectedSection) {
-      const filtered = modules.filter(m =>
-        m.module_sections?.some((ms) => ms.section_id === selectedSection)
-      );
-      setFilteredModules(filtered);
-    } else {
-      setFilteredModules([]);
-    }
-  }, [selectedSection, modules]);
+  }, [open, editResource, loadFolders, initialFolderId]);
 
   const resetForm = () => {
     setSelectedSection('');
-    setSelectedModule('none');
     setSelectedFolder('none');
     setResourceName('');
     setUrl('');
@@ -358,11 +320,6 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
       return;
     }
 
-    if (!selectedSection) {
-      toast.error('请选择所属板块');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -419,8 +376,7 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
 
       const resourceData = {
         user_id: user.id,
-        section_id: finalSectionId,
-        module_id: selectedModule && selectedModule !== 'none' ? selectedModule : null,
+        section_id: finalSectionId || null,
         folder_id: selectedFolder && selectedFolder !== 'none' ? selectedFolder : null,
         name: resourceName.trim(),
         url: finalUrl,
@@ -471,8 +427,8 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="folder">所属文件夹（可选）</Label>
-            <Select 
-              value={selectedFolder} 
+            <Select
+              value={selectedFolder}
               onValueChange={(val) => {
                 setSelectedFolder(val);
                 trackEvent('add_folder_select', { folderId: val });
@@ -487,49 +443,8 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              选择文件夹后，资源将按文件夹组织（新版功能）
+              选择文件夹后，资源将按文件夹组织
             </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="section">所属板块 *</Label>
-            <Select value={selectedSection} onValueChange={(val) => {
-              setSelectedSection(val);
-              trackEvent('add_plate_select', { sectionId: val });
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择板块" />
-              </SelectTrigger>
-              <SelectContent>
-                {sections
-                  .filter(section => section.type !== 'video') // 隐藏视频板块
-                  .map(section => (
-                    <SelectItem key={section.id} value={section.id}>
-                      {section.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="module">所属模块（可选）</Label>
-            <Select value={selectedModule} onValueChange={(val) => {
-              setSelectedModule(val);
-              trackEvent('add_module_select', { moduleId: val });
-            }} disabled={!selectedSection}>
-              <SelectTrigger>
-                <SelectValue placeholder="选择模块" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">无</SelectItem>
-                {filteredModules.map(module => (
-                  <SelectItem key={module.id} value={module.id}>
-                    {module.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="space-y-2">
