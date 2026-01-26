@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (username: string, password: string, nickname?: string) => Promise<{ error: Error | null }>;
+  signUp: (username: string, password: string, nickname?: string, birthDate?: string | null) => Promise<{ error: Error | null }>;
   signIn: (username: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   checkUsernameExists: (username: string) => Promise<boolean>;
@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !!profile;
   };
 
-  const signUp = async (username: string, password: string, nickname?: string) => {
+  const signUp = async (username: string, password: string, nickname?: string, birthDate?: string | null) => {
     // 检查用户名是否存在
     const exists = await checkUsernameExists(username);
     if (exists) {
@@ -65,17 +65,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const email = `${username}@shiguang.local`;
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           username,
           nickname: nickname || username,
+          birth_date: birthDate,
         },
         emailRedirectTo: `${window.location.origin}/`,
       },
     });
+
+    // 如果注册成功且提供了出生日期，更新profiles表
+    if (!error && data.user && birthDate) {
+      await supabase
+        .from('profiles')
+        .update({ birth_date: birthDate })
+        .eq('id', data.user.id);
+    }
 
     return { error: error || null };
   };

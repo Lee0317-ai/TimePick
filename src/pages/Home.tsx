@@ -19,6 +19,7 @@ import { WeatherWidget } from '@/components/WeatherWidget';
 import { TagCloud } from '@/components/TagCloud';
 import { InspirationDrawer } from '@/components/InspirationDrawer';
 import { ResizableSidebar } from '@/components/ResizableSidebar';
+import { FortuneDrawDialog } from '@/components/FortuneDrawDialog';
 import { TreeNode, Folder, ResourceInitData } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
@@ -45,6 +46,7 @@ export default function Home() {
   const [showTagCloud, setShowTagCloud] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showInspirationDrawer, setShowInspirationDrawer] = useState(false);
+  const [showFortuneDrawDialog, setShowFortuneDrawDialog] = useState(false);
 
   useEffect(() => {
     document.title = '首页 - 拾光';
@@ -272,10 +274,13 @@ export default function Home() {
               variant="ghost"
               size="sm"
               className="flex items-center gap-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-              onClick={() => navigate('/fortune')}
+              onClick={() => {
+                setShowFortuneDrawDialog(true);
+                trackEvent('fortune_draw_btn_click');
+              }}
             >
               <Sparkles className="h-4 w-4" />
-              <span>算运势</span>
+              <span>抽签</span>
             </Button>
             <Button
               variant="ghost"
@@ -567,6 +572,12 @@ export default function Home() {
         onConvertToResource={handleConvertToResource}
       />
 
+      {/* 抽签对话框 */}
+      <FortuneDrawDialog
+        open={showFortuneDrawDialog}
+        onOpenChange={setShowFortuneDrawDialog}
+      />
+
       {/* 版本更新对话框 */}
       <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
@@ -609,6 +620,7 @@ export default function Home() {
       <InspirationDrawer
         open={showInspirationDrawer}
         onOpenChange={setShowInspirationDrawer}
+        onConvertToResource={handleConvertToResource}
       />
     </div>
   );

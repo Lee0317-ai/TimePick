@@ -34,6 +34,8 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showBirthDateDialog, setShowBirthDateDialog] = useState(false);
+  const [birthDate, setBirthDate] = useState('');
 
   const loadProfile = useCallback(async () => {
     if (!user) return;
@@ -46,6 +48,7 @@ export default function Profile() {
 
     if (data) {
       setProfile(data as ProfileType);
+      setBirthDate(data.birth_date || '');
     }
   }, [user]);
 
@@ -124,6 +127,29 @@ export default function Profile() {
     }
   };
 
+  const handleUpdateBirthDate = async () => {
+    if (!birthDate) {
+      toast.error('请选择出生日期');
+      return;
+    }
+
+    setIsLoading(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ birth_date: birthDate })
+      .eq('id', user?.id);
+
+    setIsLoading(false);
+
+    if (error) {
+      toast.error('修改失败');
+    } else {
+      toast.success('出生日期已更新，今日可重新抽签');
+      setShowBirthDateDialog(false);
+      loadProfile();
+    }
+  };
+
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [showClearCacheDialog, setShowClearCacheDialog] = useState(false);
 
@@ -169,6 +195,26 @@ export default function Profile() {
             <div>
               <Label>账号ID</Label>
               <div className="text-sm text-muted-foreground">{profile?.username}</div>
+            </div>
+            <div>
+              <Label>出生日期</Label>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  {profile?.birth_date 
+                    ? new Date(profile.birth_date).toLocaleDateString('zh-CN')
+                    : '未设置'}
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowBirthDateDialog(true);
+                    trackEvent('profile_birth_date_edit_click');
+                  }}
+                >
+                  {profile?.birth_date ? '修改' : '设置'}
+                </Button>
+              </div>
             </div>
             <div>
               <Label>注册时间</Label>
@@ -283,6 +329,40 @@ export default function Profile() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 修改出生日期对话框 */}
+      <Dialog open={showBirthDateDialog} onOpenChange={setShowBirthDateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{profile?.birth_date ? '修改出生日期' : '设置出生日期'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="birthDate">出生日期</Label>
+              <Input
+                id="birthDate"
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+              />
+              <p className="text-xs text-muted-foreground">
+                用于每日运势抽签。修改后今日可重新抽签。
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBirthDateDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={handleUpdateBirthDate} disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              确认{profile?.birth_date ? '修改' : '设置'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* 退出登录确认对话框 */}
       <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
         <AlertDialogContent>

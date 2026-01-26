@@ -16,6 +16,7 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [nickname, setNickname] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -97,7 +98,7 @@ export default function Register() {
     }
 
     setIsLoading(true);
-    const { error } = await signUp(username, password, nickname);
+    const { error } = await signUp(username, password, nickname, birthDate || null);
     setIsLoading(false);
 
     if (error) {
@@ -169,6 +170,18 @@ export default function Register() {
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="birthDate">出生日期 *</Label>
+              <Input
+                id="birthDate"
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                required
+              />
+              <p className="text-xs text-muted-foreground">用于每日运势抽签</p>
             </div>
             <Button
               type="submit"

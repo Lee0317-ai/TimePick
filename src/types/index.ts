@@ -41,6 +41,7 @@ export interface Profile {
   id: string;
   username: string;
   nickname: string;
+  birth_date: string | null;
   created_at: string;
   storage_used: number;
   storage_limit: number;
@@ -98,4 +99,44 @@ export interface ResourceInitData {
   notes?: string;
   location?: string | null;
   inspirationId?: string;
+}
+
+export interface FortuneDraw {
+  id: string;
+  user_id: string;
+  birth_date: string;
+  draw_date: string;
+  image_url: string;
+  fortune_content: string;
+  created_at: string;
+}
+
+export interface FortuneDrawResponse {
+  success: boolean;
+  cached: boolean;
+  data: {
+    image_url: string;
+    fortune_content: string;
+    draw_date: string;
+  };
+}
+
+export interface FortuneDraw {
+  id: string;
+  user_id: string;
+  birth_date: string;
+  draw_date: string;
+  image_url: string;
+  fortune_content: string;
+  created_at: string;
+}
+
+export interface FortuneDrawResponse {
+  success: boolean;
+  cached: boolean;
+  data: {
+    image_url: string;
+    fortune_content: string;
+    draw_date: string;
+  };
 }
