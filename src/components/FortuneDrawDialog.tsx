@@ -303,11 +303,11 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
     const isMobile = window.innerWidth < 768;
 
     return (
-      <div className="space-y-4">
-        <div className={`${isMobile ? 'flex flex-col space-y-4' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}`}>
+      <div className="space-y-4 pb-4">
+        <div className={`${isMobile ? 'flex flex-col space-y-3' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}`}>
           {/* 左侧：运势图片 */}
           <div className="space-y-3">
-            <div className={`${isMobile ? 'aspect-[4/3]' : 'aspect-square'} rounded-xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg border-2 border-purple-100 flex items-center justify-center`}>
+            <div className={`${isMobile ? 'aspect-[16/9]' : 'aspect-square'} rounded-xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg border-2 border-purple-100 flex items-center justify-center`}>
               <img
                 src={fortuneData.image_url}
                 alt="运势签"
@@ -334,7 +334,7 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
           </div>
 
           {/* 右侧：运势内容 */}
-          <ScrollArea className={`${isMobile ? 'h-[60vh]' : 'h-[500px]'} pr-3`}>
+          <div className={`${isMobile ? '' : 'overflow-y-auto max-h-[500px] pr-3'}`}>
             <div className="space-y-4">
               {/* 标题 */}
               <div className="text-center pb-3 border-b">
@@ -398,7 +398,7 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
                 </p>
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
         <Button
@@ -413,24 +413,28 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            每日运势抽签
-          </DialogTitle>
-          <DialogDescription>
-            {needBirthDate 
-              ? '首次使用需要设置出生日期' 
-              : fortuneData 
-              ? '查看今日运势' 
-              : '每天只能抽一次签哦'}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <div className="px-6 pt-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              每日运势抽签
+            </DialogTitle>
+            <DialogDescription>
+              {needBirthDate 
+                ? '首次使用需要设置出生日期' 
+                : fortuneData 
+                ? '查看今日运势' 
+                : '每天只能抽一次签哦'}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        {isDrawing && renderDrawingAnimation()}
-        {!isDrawing && needBirthDate && renderBirthDateInput()}
-        {!isDrawing && !needBirthDate && fortuneData && renderFortuneResult()}
+        <div className="flex-1 overflow-y-auto px-6 pb-6">
+          {isDrawing && renderDrawingAnimation()}
+          {!isDrawing && needBirthDate && renderBirthDateInput()}
+          {!isDrawing && !needBirthDate && fortuneData && renderFortuneResult()}
+        </div>
       </DialogContent>
     </Dialog>
   );
