@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sparkles, Loader2, Calendar, Briefcase, GraduationCap, Heart, Activity } from 'lucide-react';
+import { Sparkles, Loader2, Calendar, Briefcase, GraduationCap, Heart, Activity, Download, ZoomIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { FortuneDrawResponse } from '@/types';
 import { trackEvent } from '@/lib/analytics';
@@ -30,6 +30,7 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
   const [needBirthDate, setNeedBirthDate] = useState(false);
   const [birthDate, setBirthDate] = useState('');
   const [isSavingBirthDate, setIsSavingBirthDate] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
 
   useEffect(() => {
     if (open && user) {
@@ -307,11 +308,14 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
         <div className={`${isMobile ? 'flex flex-col space-y-3' : 'grid grid-cols-1 md:grid-cols-2 gap-6'}`}>
           {/* 左侧：运势图片 */}
           <div className="space-y-3">
-            <div className={`${isMobile ? 'aspect-[16/9]' : 'aspect-square'} rounded-xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg border-2 border-purple-100 flex items-center justify-center`}>
+            <div 
+              className={`${isMobile ? 'aspect-[16/9]' : 'aspect-square'} rounded-xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 shadow-lg border-2 border-purple-100 flex items-center justify-center cursor-pointer relative group`}
+              onClick={() => setShowImagePreview(true)}
+            >
               <img
                 src={fortuneData.image_url}
                 alt="运势签"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
                 crossOrigin="anonymous"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -319,6 +323,13 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
                   target.parentElement!.innerHTML = '<div class="text-muted-foreground flex flex-col items-center justify-center gap-2"><Sparkles class="h-12 w-12" /><p>运势签图</p></div>';
                 }}
               />
+              {/* 悬浮提示 */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                <div className="text-white text-sm flex items-center gap-2">
+                  <ZoomIn className="h-5 w-5" />
+                  <span>点击查看</span>
+                </div>
+              </div>
             </div>
             
             {/* 星座和日期信息 */}
@@ -411,31 +422,84 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-        <div className="px-6 pt-6">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              每日运势抽签
-            </DialogTitle>
-            <DialogDescription>
-              {needBirthDate 
-                ? '首次使用需要设置出生日期' 
-                : fortuneData 
-                ? '查看今日运势' 
-                : '每天只能抽一次签哦'}
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+  // 下载图片
+  const handleDownloadImage = async () => {
+    if (!fortuneData?.image_url) return;
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6">
-          {isDrawing && renderDrawingAnimation()}
-          {!isDrawing && needBirthDate && renderBirthDateInput()}
-          {!isDrawing && !needBirthDate && fortuneData && renderFortuneResult()}
-        </div>
-      </DialogContent>
-    </Dialog>
+    try {
+      const response = await fetch(fortuneData.image_url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `运势签_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success('图片下载成功');
+      trackEvent('fortune_image_download');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('图片下载失败');
+    }
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <div className="px-6 pt-6">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                每日运势抽签
+              </DialogTitle>
+              <DialogDescription>
+                {needBirthDate 
+                  ? '首次使用需要设置出生日期' 
+                  : fortuneData 
+                  ? '查看今日运势' 
+                  : '每天只能抽一次签哦'}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
+            {isDrawing && renderDrawingAnimation()}
+            {!isDrawing && needBirthDate && renderBirthDateInput()}
+            {!isDrawing && !needBirthDate && fortuneData && renderFortuneResult()}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 图片预览对话框 */}
+      <Dialog open={showImagePreview} onOpenChange={setShowImagePreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          <div className="relative bg-black">
+            <img
+              src={fortuneData?.image_url}
+              alt="运势签大图"
+              className="w-full h-full object-contain max-h-[85vh]"
+              crossOrigin="anonymous"
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+              <div className="flex items-center justify-between">
+                <p className="text-white text-sm">运势签 - {new Date().toLocaleDateString('zh-CN')}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleDownloadImage}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  下载图片
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
