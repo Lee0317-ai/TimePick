@@ -75,48 +75,62 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
       console.log('=== Starting fortune draw ===');
       console.log('User ID:', user.id);
       
-      const response = await supabase.functions.invoke('draw-fortune', {
-        method: 'POST',
-      });
+      // 获取出生日期
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('birth_date')
+        .eq('id', user.id)
+        .single();
 
-      console.log('Raw response:', response);
-      
-      const { data, error } = response;
-      
-      // 如果有error，打印详细信息
-      if (error) {
-        console.error('=== Error occurred ===');
-        console.error('Error type:', error.constructor.name);
-        console.error('Error message:', error.message);
-        console.error('Error name:', error.name);
-        console.error('Error status:', error.status);
-        console.error('Full error object:', JSON.stringify(error, null, 2));
-        
-        // 显示友好的错误信息
+      if (!profile?.birth_date) {
+        setNeedBirthDate(true);
+        toast.error('请先设置您的出生日期');
+        return;
+      }
+
+      console.log('Birth date:', profile.birth_date);
+
+      // 使用fetch直接调用，像识别功能一样
+      const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es';
+
+      console.log('Calling draw-fortune function...');
+      const response = await fetch(
+        'https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/draw-fortune',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            userId: user.id,
+            birthDate: profile.birth_date
+          })
+        }
+      );
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
         toast.error('抽签服务暂时不可用，请稍后重试');
         return;
       }
 
-      // data为null的情况
-      if (data === null) {
-        console.error('Data is null but no error');
-        toast.error('服务器响应异常，请稍后重试');
-        return;
-      }
-
-      console.log('=== Response data ===');
-      console.log('Data:', data);
+      const data = await response.json();
+      console.log('Response data:', data);
 
       if (!data.success) {
         console.error('Operation failed:', data);
-        const errorMsg = data.error || data.message || '识别失败，请重试';
-        toast.error(errorMsg);
+        toast.error(data.error || data.message || '识别失败，请重试');
         return;
       }
 
       console.log('=== Success ===');
       setFortuneData(data.data);
-      trackEvent('fortune_draw_success', { cached: data.cached });
+      trackEvent('fortune_draw_success', { cached: data.cached || false });
 
       if (data.cached) {
         toast.success('今日运势已为您准备好了');
