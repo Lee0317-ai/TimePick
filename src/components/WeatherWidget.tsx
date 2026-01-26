@@ -101,28 +101,32 @@ export function WeatherWidget() {
       console.warn('Weather fetch failed:', error);
       
       // 使用默认值
-      if (!weather) {
-        setWeather({
-          temperature: 20,
-          condition: '晴朗',
-          location: savedCity || '北京',
-          icon: '113'
-        });
-      }
+      setWeather((prev) => prev || {
+        temperature: 20,
+        condition: '晴朗',
+        location: savedCity || '北京',
+        icon: '113'
+      });
       setLoading(false);
     } finally {
       // 确保无论成功或失败，都停止刷新动画
       setRefreshing(false);
     }
-  }, [savedCity, weather]);
+  }, [savedCity]);
 
-    useEffect(() => {
+  // 自动刷新天气（初始加载 + 30分钟定时刷新）
+  useEffect(() => {
+    // 初始加载
+    fetchWeather();
+    
+    // 设置30分钟定时刷新
+    const weatherTimer = setInterval(() => {
+      console.log('Auto-refreshing weather (30 min interval)');
       fetchWeather();
-      // 每30分钟更新一次天气
-      const weatherTimer = setInterval(() => fetchWeather(), 30 * 60 * 1000);
+    }, 30 * 60 * 1000); // 30分钟 = 1800000毫秒
 
-      return () => clearInterval(weatherTimer);
-    }, [savedCity, fetchWeather]);
+    return () => clearInterval(weatherTimer);
+  }, [fetchWeather]);
 
     // 手动刷新
     const handleRefresh = () => {
