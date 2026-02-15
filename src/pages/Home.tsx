@@ -257,7 +257,7 @@ export default function Home() {
                   variant="ghost"
                   size="sm"
                   className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-                  onClick={() => toast.info('算运势功能开发中...')}
+                  onClick={() => navigate('/fortune')}
                 >
                   <Sparkles className="h-4 w-4" />
                   <span>算运势</span>
@@ -347,7 +347,7 @@ export default function Home() {
                   size="sm"
                   variant="ghost"
                   className="flex flex-col items-center gap-0.5 relative px-2 py-1"
-                  onClick={() => toast.info('算运势功能开发中...')}
+                  onClick={() => navigate('/fortune')}
                 >
                   <Sparkles className="h-4 w-4" />
                   <span className="text-[10px]">算运势</span>
@@ -585,7 +585,7 @@ export default function Home() {
                   {/* 算运势 */}
                   <button
                     className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors text-left"
-                    onClick={() => toast.info('算运势功能开发中...')}
+                    onClick={() => navigate('/fortune')}
                   >
                     <Sparkles className="h-5 w-5 text-indigo-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
