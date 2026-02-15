@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Search, User, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag, Lightbulb, Compass } from 'lucide-react';
+import { Plus, Search, User, Menu, Sparkles, FileText, FolderTree as FolderTreeIcon, Tag, Lightbulb, Compass, ListTodo } from 'lucide-react';
 import { toast } from 'sonner';
 import { FolderTree } from '@/components/FolderTree';
 import { TagTree } from '@/components/TagTree';
@@ -277,6 +277,18 @@ export default function Home() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="flex items-center gap-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => {
+                    trackEvent('try_queue_click');
+                    navigate('/todo');
+                  }}
+                >
+                  <ListTodo className="h-4 w-4" />
+                  <span>任务清单</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="flex items-center gap-2"
                   onClick={() => {
                     setShowTagCloud(true);
@@ -515,6 +527,19 @@ export default function Home() {
             >
               <Search className="h-5 w-5" />
               <span className="text-xs">搜索</span>
+            </Button>
+
+            {/* 任务清单 */}
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-1 h-auto py-2 px-4"
+              onClick={() => {
+                trackEvent('try_queue_click');
+                navigate('/todo');
+              }}
+            >
+              <ListTodo className="h-5 w-5" />
+              <span className="text-xs">任务清单</span>
             </Button>
 
             {/* 3. 新增（中间悬浮） */}

@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       host: "::",
-      port: 8090,
+      port: 8080,
     },
     plugins: plugins.filter(Boolean) as PluginOption[],
     resolve: {

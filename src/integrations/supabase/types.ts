@@ -208,6 +208,7 @@ export type Database = {
         Row: {
           birth_date: string | null
           created_at: string | null
+          default_try_queue_folder_id: string | null
           id: string
           nickname: string | null
           storage_limit: number | null
@@ -217,6 +218,7 @@ export type Database = {
         Insert: {
           birth_date?: string | null
           created_at?: string | null
+          default_try_queue_folder_id?: string | null
           id: string
           nickname?: string | null
           storage_limit?: number | null
@@ -226,6 +228,7 @@ export type Database = {
         Update: {
           birth_date?: string | null
           created_at?: string | null
+          default_try_queue_folder_id?: string | null
           id?: string
           nickname?: string | null
           storage_limit?: number | null
@@ -233,6 +236,113 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      learning_focus: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_paused: boolean | null
+          name: string
+          synonyms: string[] | null
+          updated_at: string | null
+          user_id: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_paused?: boolean | null
+          name: string
+          synonyms?: string[] | null
+          updated_at?: string | null
+          user_id: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_paused?: boolean | null
+          name?: string
+          synonyms?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      try_queue_links: {
+        Row: {
+          archived_at: string | null
+          complete_time: string | null
+          converted_to_resource_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_priority_locked: boolean | null
+          notes: string | null
+          priority_level: string | null
+          priority_score: number | null
+          queue_position: number | null
+          rating: number | null
+          start_time: string | null
+          status: string | null
+          tags: string[] | null
+          title: string | null
+          updated_at: string | null
+          url: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          complete_time?: string | null
+          converted_to_resource_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_priority_locked?: boolean | null
+          notes?: string | null
+          priority_level?: string | null
+          priority_score?: number | null
+          queue_position?: number | null
+          rating?: number | null
+          start_time?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string | null
+          url: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          complete_time?: string | null
+          converted_to_resource_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_priority_locked?: boolean | null
+          notes?: string | null
+          priority_level?: string | null
+          priority_score?: number | null
+          queue_position?: number | null
+          rating?: number | null
+          start_time?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string | null
+          updated_at?: string | null
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "try_queue_links_converted_to_resource_id_fkey"
+            columns: ["converted_to_resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resources: {
         Row: {
@@ -431,6 +541,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      archive_deferred_links: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      check_url_exists: {
+        Args: {
+          p_url: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       check_username_exists: {
         Args: { username_input: string }
         Returns: boolean

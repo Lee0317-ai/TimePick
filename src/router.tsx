@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import SearchPage from "./pages/SearchPage";
 import NotFound from "./pages/NotFound";
+import Todo from "./pages/Todo";
 
 import Fortune from "./pages/Fortune";
 
@@ -39,6 +40,11 @@ export const routers = [
       path: "/fortune",
       name: 'fortune',
       element: <Fortune />,
+    },
+    {
+      path: "/todo",
+      name: 'todo',
+      element: <Todo />,
     },
     {
       path: "/profile",

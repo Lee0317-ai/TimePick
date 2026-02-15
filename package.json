@@ -9,9 +9,17 @@
     "build:prod": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "pInstall": "pnpm install"
+    "pInstall": "pnpm install",
+    "supabase:link": "npx supabase@latest link --project-ref glfymisjfvioyaylzkdj",
+    "supabase:deploy:fetch": "npx supabase@latest functions deploy fetch-webpage-metadata",
+    "supabase:deploy:calculate": "npx supabase@latest functions deploy calculate-priority",
+    "supabase:deploy:batch": "npx supabase@latest functions deploy batch-calculate-priority",
+    "supabase:deploy:all": "npx supabase@latest functions deploy fetch-webpage-metadata calculate-priority batch-calculate-priority"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.2.1",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -85,9 +93,10 @@
     "globals": "^16.3.0",
     "pnpm": "8.6.12",
     "postcss": "^8.5.6",
+    "supabase": "^1.2.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.42.0",
-    "vite": "^6.0.0"
+    "vite": "^7.1.4"
   }
 }
