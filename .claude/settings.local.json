@@ -15,7 +15,8 @@
       "Bash(npm install:*)",
       "Bash(pnpm remove:*)",
       "Bash(pnpm add:*)",
-      "Bash(supabase functions:*)"
+      "Bash(supabase functions:*)",
+      "Bash(grep:*)"
     ]
   }
 }

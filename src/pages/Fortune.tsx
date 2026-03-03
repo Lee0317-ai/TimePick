@@ -80,10 +80,10 @@ export default function Fortune() {
       console.log('=== Fortune Request ===');
       console.log('User message:', userMessage);
       
-      // 使用 anon key 作为 Bearer token
-      const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es';
-      
-      const response = await fetch('https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/fortune-agent', {
+      // 使用环境变量中的 anon key
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fortune-agent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
