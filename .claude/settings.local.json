@@ -6,7 +6,12 @@
       "Bash(npm run dev)",
       "Bash(pkill:*)",
       "Bash(node -e:*)",
-      "Bash(\"D:\\\\AIWork\\\\TimePick\\\\supabase\\\\functions\\\\calculate-priority\\\\index.ts\":*)"
+      "Bash(\"D:\\\\AIWork\\\\TimePick\\\\supabase\\\\functions\\\\calculate-priority\\\\index.ts\":*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(pnpm install:*)"
     ]
   }
 }
