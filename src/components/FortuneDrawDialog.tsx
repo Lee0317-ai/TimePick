@@ -92,49 +92,41 @@ export function FortuneDrawDialog({ open, onOpenChange }: FortuneDrawDialogProps
 
       console.log('Birth date:', profile.birth_date);
 
-      // 使用fetch直接调用，像识别功能一样
-      const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es';
-
       console.log('Calling draw-fortune function...');
-      const response = await fetch(
-        'https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/draw-fortune',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${anonKey}`,
-            'apikey': anonKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            userId: user.id,
-            birthDate: profile.birth_date
-          })
+      // 使用 Supabase 客户端调用 Edge Function
+      const { data: functionData, error: functionError } = await supabase.functions.invoke('draw-fortune', {
+        body: {
+          userId: user.id,
+          birthDate: profile.birth_date
         }
-      );
+      });
 
-      console.log('Response status:', response.status);
+      if (functionError) {
+        console.error('Function error:', functionError);
+        throw functionError;
+      }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        toast.error('抽签服务暂时不可用，请稍后重试');
+      // 兼容新的响应格式（直接返回）和旧格式（包装在 data 中）
+      const responseData = functionData?.data || functionData;
+
+      if (!responseData) {
+        console.error('No data returned from function');
+        toast.error('识别失败，请重试');
         return;
       }
 
-      const data = await response.json();
-      console.log('Response data:', data);
-
-      if (!data.success) {
-        console.error('Operation failed:', data);
-        toast.error(data.error || data.message || '识别失败，请重试');
+      // 检查是否有错误信息
+      if (responseData.error || (functionData && functionData.error)) {
+        console.error('Error in response:', responseData.error || functionData.error);
+        toast.error(responseData.error || '识别失败，请重试');
         return;
       }
 
       console.log('=== Success ===');
-      setFortuneData(data.data);
-      trackEvent('fortune_draw_success', { cached: data.cached || false });
+      setFortuneData(responseData);
+      trackEvent('fortune_draw_success', { cached: responseData.cached || false });
 
-      if (data.cached) {
+      if (responseData.cached) {
         toast.success('今日运势已为您准备好了');
       } else {
         toast.success('抽签成功！');

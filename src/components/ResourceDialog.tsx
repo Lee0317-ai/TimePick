@@ -141,27 +141,14 @@ export function ResourceDialog({ open, onOpenChange, onSuccess, editResource, in
     trackEvent('auto_recognize_click', { url });
 
     try {
-      const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnltaXNqZnZpb3lheWx6a2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzc1MTQsImV4cCI6MjA4MzI1MzUxNH0.OIhpRNX9rbWWMqV_l0CSX4QTEbxqZYFjPafigjlB1es';
+      // 使用 Supabase Edge Functions 调用
+      const { data, error } = await supabase.functions.invoke('auto-recognize', {
+        body: { url: url.trim() }
+      });
 
-      const response = await fetch(
-        'https://glfymisjfvioyaylzkdj.supabase.co/functions/v1/auto-recognize',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${anonKey}`,
-            'apikey': anonKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ url: url.trim() })
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || '识别服务请求失败');
+      if (error) {
+        throw new Error(error.message || '识别服务请求失败');
       }
-
-      const data = await response.json();
 
       console.log('Recognition response:', data);
 
