@@ -30,7 +30,7 @@ serve(async (req) => {
 
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; TimePickBot/1.0; +https://timepick.app)"
+        "User-Agent": "Mozilla/5.0 (compatible; ShiGuangBot/1.0; +https://shiguang.app)"
       }
     })
 

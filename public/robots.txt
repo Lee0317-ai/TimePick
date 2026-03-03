@@ -4,6 +4,15 @@ Allow: /
 User-agent: Bingbot
 Allow: /
 
+User-agent: Baiduspider
+Allow: /
+
+User-agent: Sogou spider
+Allow: /
+
+User-agent: 360Spider
+Allow: /
+
 User-agent: Twitterbot
 Allow: /
 
@@ -12,3 +21,5 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://shiguang.app/sitemap.xml
